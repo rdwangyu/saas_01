@@ -81,6 +81,38 @@ class CompanyAdmin(admin.ModelAdmin):
         }),
     )
 
+    def _is_company_user(self, user):
+        return user.is_staff and user.company is not None
+
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        if obj is not None:
+            return obj == request.user.company
+        return self._is_company_user(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        return qs.filter(id=request.user.company_id)
+
     def logo_preview(self, obj):
         return image_preview(obj, 'logo', width=60)
     logo_preview.short_description = 'Logo'
@@ -121,9 +153,9 @@ class UserAdmin(BaseUserAdmin):
     """
 
     list_display = [
-        'username', 'company', 'role', 'email', 'is_active', 'is_superuser', 'date_joined',
+        'username', 'company', 'role_display', 'email', 'is_active', 'date_joined',
     ]
-    list_filter = ['role', 'is_active', 'is_superuser', 'company']
+    list_filter = ['is_active', 'company']
     search_fields = ['username', 'email', 'company__name']
 
     # 重写 fieldsets，加入 company 和 role
@@ -137,21 +169,49 @@ class UserAdmin(BaseUserAdmin):
         ('公司与角色', {
             'fields': ('company', 'role'),
         }),
-        ('权限', {
-            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
-        }),
         ('时间', {
             'fields': ('last_login', 'date_joined'),
         }),
     )
 
-    # 新增用户时的表单
+    # 新增用户时的表单（无需 role，默认就是公司管理员）
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'company', 'role', 'password1', 'password2'),
+            'fields': ('username', 'email', 'company', 'password1', 'password2'),
         }),
     )
+
+    # ============================================================
+    # 权限：有公司的 staff 用户即可访问，不依赖 Django 模型权限
+    # ============================================================
+    def _is_company_user(self, user):
+        return user.is_staff and user.company is not None
+
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def role_display(self, obj):
+        return obj.get_role_display()
+    role_display.short_description = '角色'
 
     def get_queryset(self, request):
         """非超级管理员只能看到自己公司的用户。"""
@@ -169,9 +229,19 @@ class UserAdmin(BaseUserAdmin):
         return form
 
     def save_model(self, request, obj, form, change):
-        """非超级管理员创建用户时自动绑定公司。"""
+        """新建用户默认可登录后台，公司管理员创建的用户自动绑定公司。"""
         if not request.user.is_superuser:
             obj.company = request.user.company
+            if change and obj.pk:
+                original = self.model.objects.get(pk=obj.pk)
+                obj.is_superuser = original.is_superuser
+                obj.is_staff = original.is_staff
+                obj.is_active = original.is_active
+        if not change:
+            obj.is_staff = True
+            obj.is_active = True
+            if not request.user.is_superuser:
+                obj.is_superuser = False
         super().save_model(request, obj, form, change)
 
 

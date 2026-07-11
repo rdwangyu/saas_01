@@ -69,7 +69,6 @@ class User(AbstractUser):
 
     class Role(models.TextChoices):
         ADMIN = 'admin', '公司管理员'
-        EMPLOYEE = 'employee', '员工'
 
     company = models.ForeignKey(
         Company,
@@ -84,7 +83,7 @@ class User(AbstractUser):
         '角色',
         max_length=20,
         choices=Role.choices,
-        default=Role.EMPLOYEE,
+        default=Role.ADMIN,
     )
 
     class Meta:

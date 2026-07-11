@@ -20,6 +20,40 @@ class CompanyAdminMixin:
     - 超级管理员可以看到全部数据
     """
 
+    # ============================================================
+    # 权限：有公司的 staff 用户即可访问，不再依赖 Django 模型权限
+    # ============================================================
+    def _is_company_user(self, user):
+        return user.is_staff and user.company is not None
+
+    def has_module_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_view_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_add_permission(self, request):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_change_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    def has_delete_permission(self, request, obj=None):
+        if request.user.is_superuser:
+            return True
+        return self._is_company_user(request.user)
+
+    # ============================================================
+    # 数据隔离
+    # ============================================================
     def get_queryset(self, request):
         """非超级管理员只能看到自己公司的数据。"""
         qs = super().get_queryset(request)
@@ -44,9 +78,7 @@ class CompanyAdminMixin:
         """
         if db_field.name == 'company':
             if not request.user.is_superuser:
-                # 限定为自己的公司
-                kwargs['queryset'] = type(self).objects.none()  # 占位，后续在 get_form 中处理
-                # 实际上我们通过 get_form 来更好地控制
+                kwargs['queryset'] = self.model.objects.none()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
@@ -54,11 +86,9 @@ class CompanyAdminMixin:
         form = super().get_form(request, obj=obj, **kwargs)
         if 'company' in form.base_fields:
             if request.user.is_superuser:
-                # 超级管理员可以选择任意公司
                 from .models import Company
                 form.base_fields['company'].queryset = Company.objects.filter(status='active')
             else:
-                # 普通用户：company 字段设为只读，显示自己的公司名称
                 form.base_fields['company'].disabled = True
                 form.base_fields['company'].required = False
         return form
