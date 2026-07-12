@@ -63,10 +63,11 @@ class CaseSerializer(serializers.ModelSerializer):
         model = Case
         fields = [
             'id', 'company', 'company_name', 'title', 'cover',
-            'images', 'video_url', 'description', 'style', 'area',
-            'budget', 'created_at',
+            'images', 'video_url', 'description',
+            'style', 'area', 'budget', 'created_at',
         ]
-        read_only_fields = ['id', 'company', 'created_at']
+        read_only_fields = ['id', 'company', 'images', 'video_url',
+                           'created_at']
 
     def create(self, validated_data):
         """自动绑定 company 为当前用户所属公司（超级管理员除外）。"""
@@ -88,9 +89,10 @@ class ProjectProgressSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'company', 'company_name', 'customer_name', 'phone',
             'address', 'current_stage', 'stage_name_snapshot',
-            'content', 'images', 'video_url', 'created_at',
+            'content', 'images', 'video_url', 'video_file', 'created_at',
         ]
-        read_only_fields = ['id', 'company', 'stage_name_snapshot', 'created_at']
+        read_only_fields = ['id', 'company', 'images', 'video_url',
+                           'video_file', 'stage_name_snapshot', 'created_at']
 
     def create(self, validated_data):
         """自动绑定 company 为当前用户所属公司。"""

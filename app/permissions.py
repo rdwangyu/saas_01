@@ -74,11 +74,17 @@ class CompanyAdminMixin:
         """
         对于 company 外键字段：
         - 超级管理员：可以看到全部公司
-        - 普通用户：限制为自己的公司且不可更改
+        - 普通用户：限制为自己的公司（新建时可见，编辑时只读）
         """
         if db_field.name == 'company':
             if not request.user.is_superuser:
-                kwargs['queryset'] = self.model.objects.none()
+                from .models import Company
+                if request.user.company:
+                    kwargs['queryset'] = Company.objects.filter(
+                        id=request.user.company_id
+                    )
+                else:
+                    kwargs['queryset'] = Company.objects.none()
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
@@ -91,12 +97,19 @@ class CompanyAdminMixin:
             else:
                 form.base_fields['company'].disabled = True
                 form.base_fields['company'].required = False
+                # 新建时预设当前用户公司，使公司名在表单中可见
+                if obj is None and request.user.company:
+                    form.base_fields['company'].initial = request.user.company
         return form
 
     def get_readonly_fields(self, request, obj=None):
-        """非超级管理员时，company 字段设为只读。"""
+        """
+        非超级管理员时，company 字段在编辑时设为只读。
+        新建时（obj is None）保留可交互状态以便显示公司名。
+        """
         readonly = list(super().get_readonly_fields(request, obj) or [])
-        if not request.user.is_superuser and 'company' not in readonly:
+        if not request.user.is_superuser and obj is not None \
+                and 'company' not in readonly:
             readonly.append('company')
         return readonly
 

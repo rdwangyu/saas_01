@@ -8,12 +8,16 @@
 4. 列表展示、搜索、过滤、图片预览、JSON 友好显示
 """
 
+from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html, format_html_join
 from django.db.models import Count
 
-from .models import Company, User, Case, ProjectProgress
+from .models import (
+    Company, User, Case, ProjectProgress,
+    ProjectProgressImage,
+)
 from .permissions import CompanyAdminMixin
 
 
@@ -57,6 +61,7 @@ def json_display(value, max_items=5):
 class CompanyAdmin(admin.ModelAdmin):
     list_display = [
         'id', 'logo_preview', 'name', 'phone', 'status',
+        'max_video_size_display',
         'user_count', 'case_count', 'project_count', 'created_at',
     ]
     list_display_links = ['id', 'name']
@@ -75,6 +80,10 @@ class CompanyAdmin(admin.ModelAdmin):
         ('项目配置', {
             'fields': ('progress_stages', 'stage_preview'),
             'description': 'progress_stages 以英文逗号分隔，例如: 开始,水电,泥瓦,木工,验收',
+        }),
+        ('视频限制', {
+            'fields': ('max_video_size',),
+            'description': '视频上传大小限制，影响案例和项目进度（仅超级管理员可配置）。',
         }),
         ('状态', {
             'fields': ('status', 'created_at'),
@@ -113,9 +122,30 @@ class CompanyAdmin(admin.ModelAdmin):
             return qs
         return qs.filter(id=request.user.company_id)
 
+    def get_form(self, request, obj=None, **kwargs):
+        """Logo 使用 FileInput（无清除复选框）。"""
+        form = super().get_form(request, obj=obj, **kwargs)
+        if 'logo' in form.base_fields:
+            form.base_fields['logo'].widget = forms.FileInput()
+        return form
+
     def logo_preview(self, obj):
         return image_preview(obj, 'logo', width=60)
     logo_preview.short_description = 'Logo'
+
+    def max_video_size_display(self, obj):
+        return f'{obj.max_video_size}MB'
+    max_video_size_display.short_description = '视频大小限制'
+
+    def get_readonly_fields(self, request, obj=None):
+        """非超级管理员不能编辑视频大小限制和状态。"""
+        readonly = list(super().get_readonly_fields(request, obj) or [])
+        if not request.user.is_superuser:
+            if 'max_video_size' not in readonly:
+                readonly.append('max_video_size')
+            if 'status' not in readonly:
+                readonly.append('status')
+        return readonly
 
     def stage_preview(self, obj):
         """展示阶段列表的友好预览。"""
@@ -252,7 +282,7 @@ class UserAdmin(BaseUserAdmin):
 class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
     list_display = [
         'id', 'cover_preview', 'title', 'company', 'style', 'area',
-        'budget_display', 'images_count', 'created_at',
+        'budget_display', 'created_at',
     ]
     list_display_links = ['id', 'title']
     list_filter = ['style', 'created_at', 'company']
@@ -267,39 +297,24 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
         ('案例属性', {
             'fields': ('style', 'area', 'budget'),
         }),
-        ('媒体', {
-            'fields': ('images', 'images_preview', 'video_url'),
+        ('视频', {
+            'fields': ('video_url',),
         }),
         ('时间', {
             'fields': ('created_at',),
         }),
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        """封面图使用 FileInput（无清除复选框），其余逻辑由 Mixin 处理。"""
+        form = super().get_form(request, obj=obj, **kwargs)
+        if 'cover' in form.base_fields:
+            form.base_fields['cover'].widget = forms.FileInput()
+        return form
+
     def cover_preview(self, obj):
         return image_preview(obj, 'cover', width=80)
     cover_preview.short_description = '封面'
-
-    def images_preview(self, obj):
-        """多图预览。"""
-        imgs = obj.images if obj.images else []
-        if not imgs:
-            return '-'
-        tags = []
-        for url in imgs[:4]:
-            tags.append(format_html(
-                '<img src="{}" style="max-width:100px; max-height:80px; '
-                'margin:2px; border-radius:4px; border:1px solid #ddd;" />',
-                url,
-            ))
-        if len(imgs) > 4:
-            tags.append(format_html('<span>... 共{}张</span>', len(imgs)))
-        return format_html(''.join(['{}'] * len(tags)), *tags)
-    images_preview.short_description = '图片预览'
-
-    def images_count(self, obj):
-        imgs = obj.images if obj.images else []
-        return len(imgs)
-    images_count.short_description = '图片数'
 
     def budget_display(self, obj):
         if obj.budget:
@@ -308,8 +323,71 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
     budget_display.short_description = '预算'
 
     def get_queryset(self, request):
-        """优化查询，预加载 company。"""
         return super().get_queryset(request).select_related('company')
+
+
+# ============================================================
+# ProjectProgressImage Inline — 现场图片上传
+# ============================================================
+class ProjectProgressImageInline(admin.TabularInline):
+    model = ProjectProgressImage
+    extra = 1
+    verbose_name = '现场图片'
+    verbose_name_plural = '现场图片'
+    fields = ['image_tag', 'image', 'sort_order']
+    readonly_fields = ['image_tag']
+
+    def get_max_num(self, request, obj=None, **kwargs):
+        company = None
+        if obj and obj.company_id:
+            company = obj.company
+        elif request.user.company:
+            company = request.user.company
+        return company.max_images if company else 4
+
+    def image_tag(self, obj):
+        if obj and obj.pk and obj.image:
+            return format_html(
+                '<img src="{}" style="max-width:120px; max-height:90px; '
+                'border-radius:4px; border:1px solid #ddd;" />',
+                obj.image.url,
+            )
+        return '（上传后将显示预览）'
+    image_tag.short_description = '预览'
+
+
+# ============================================================
+# ProjectProgress Admin Form — 视频校验
+# ============================================================
+class ProjectProgressAdminForm(forms.ModelForm):
+    class Meta:
+        model = ProjectProgress
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        self._request = kwargs.pop('request', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_video_file(self):
+        video = self.cleaned_data.get('video_file')
+        if not video:
+            return video
+        company = self._get_company()
+        if company:
+            max_bytes = company.max_video_size_mb * 1024 * 1024
+            if video.size > max_bytes:
+                raise forms.ValidationError(
+                    f'视频文件大小不能超过 {company.max_video_size_mb}MB'
+                    f'（当前公司配置），请压缩后重新上传。'
+                )
+        return video
+
+    def _get_company(self):
+        if self.instance and self.instance.pk and self.instance.company_id:
+            return self.instance.company
+        if self._request and self._request.user.company:
+            return self._request.user.company
+        return None
 
 
 # ============================================================
@@ -317,14 +395,18 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
 # ============================================================
 @admin.register(ProjectProgress)
 class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
+    form = ProjectProgressAdminForm
+    inlines = [ProjectProgressImageInline]
+
     list_display = [
         'id', 'customer_name', 'stage_display', 'company',
-        'phone', 'images_count', 'created_at',
+        'phone', 'images_count_display', 'created_at',
     ]
     list_display_links = ['id', 'customer_name']
     list_filter = ['company', 'created_at']
     search_fields = ['customer_name', 'phone', 'address', 'content', 'company__name']
-    readonly_fields = ['created_at', 'stage_name_snapshot']
+    readonly_fields = ['created_at', 'stage_name_snapshot', 'images_preview',
+                       'video_preview']
     date_hierarchy = 'created_at'
 
     fieldsets = (
@@ -334,18 +416,41 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
         ('进度信息', {
             'fields': ('current_stage', 'stage_name_snapshot', 'content'),
         }),
-        ('媒体', {
-            'fields': ('images', 'images_preview', 'video_url'),
+        ('视频', {
+            'fields': ('video_url', 'video_file', 'video_preview'),
         }),
         ('时间', {
             'fields': ('created_at',),
         }),
     )
 
+    def get_form(self, request, obj=None, **kwargs):
+        form_class = super().get_form(request, obj=obj, **kwargs)
+
+        class RequestAwareForm(form_class):
+            def __init__(self, *args, **fkwargs):
+                fkwargs.setdefault('request', request)
+                super().__init__(*args, **fkwargs)
+        return RequestAwareForm
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        obj = form.instance
+        urls = [
+            img.image.url
+            for img in obj.progress_images.order_by('sort_order')
+            if img.image
+        ]
+        if obj.images != urls:
+            obj.images = urls
+            obj.save(update_fields=['images'])
+        if obj.video_file and obj.video_url != obj.video_file.url:
+            obj.video_url = obj.video_file.url
+            obj.save(update_fields=['video_url'])
+
     def stage_display(self, obj):
         """在列表中以颜色标签显示当前阶段。"""
         stage = obj.stage_name_snapshot or f'阶段{obj.current_stage}'
-        # 根据阶段序号显示不同颜色
         colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336']
         idx = obj.current_stage % len(colors)
         return format_html(
@@ -356,25 +461,45 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
     stage_display.short_description = '当前阶段'
 
     def images_preview(self, obj):
-        imgs = obj.images if obj.images else []
+        imgs = obj.progress_images.order_by('sort_order')[:8] if obj.pk else []
         if not imgs:
-            return '-'
+            return '（暂无现场图片 — 请先保存项目，再通过下方"现场图片"区域上传）'
         tags = []
-        for url in imgs[:4]:
+        for img in imgs:
             tags.append(format_html(
-                '<img src="{}" style="max-width:100px; max-height:80px; '
-                'margin:2px; border-radius:4px; border:1px solid #ddd;" />',
-                url,
+                '<img src="{}" style="max-width:120px; max-height:90px; '
+                'margin:3px; border-radius:4px; border:1px solid #ddd;" />',
+                img.image.url,
             ))
-        if len(imgs) > 4:
-            tags.append(format_html('<span>... 共{}张</span>', len(imgs)))
-        return format_html(''.join(['{}'] * len(tags)), *tags)
-    images_preview.short_description = '现场图片预览'
+        return format_html(
+            '<div style="display:flex; flex-wrap:wrap;">{}</div>',
+            format_html(''.join(['{}'] * len(tags)), *tags),
+        )
+    images_preview.short_description = '已上传现场图片'
 
-    def images_count(self, obj):
-        imgs = obj.images if obj.images else []
-        return len(imgs)
-    images_count.short_description = '图片数'
+    def images_count_display(self, obj):
+        count = obj.progress_images.count() if obj.pk else 0
+        max_n = obj.company.max_images if obj.company_id else 4
+        return f'{count}/{max_n}'
+    images_count_display.short_description = '图片数'
+
+    def video_preview(self, obj):
+        if obj.video_file:
+            return format_html(
+                '<video width="360" controls style="max-width:100%;">'
+                '<source src="{}" type="video/mp4">'
+                '您的浏览器不支持视频播放。'
+                '</video>',
+                obj.video_file.url,
+            )
+        if obj.video_url:
+            return format_html(
+                '<a href="{}" target="_blank" rel="noopener">'
+                '📺 打开视频链接</a>',
+                obj.video_url,
+            )
+        return '（未上传视频）'
+    video_preview.short_description = '视频预览'
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('company')

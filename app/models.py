@@ -42,6 +42,15 @@ class Company(models.Model):
         choices=Status.choices,
         default=Status.ACTIVE,
     )
+
+    # 视频大小限制（仅超级管理员可配置）
+    max_video_size = models.IntegerField(
+        '视频大小限制（MB）',
+        choices=[(200, '200MB'), (500, '500MB')],
+        default=200,
+        help_text='影响案例和项目进度的视频上传上限',
+    )
+
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     class Meta:
@@ -56,6 +65,16 @@ class Company(models.Model):
     def stage_list(self):
         """将 progress_stages 解析为列表，方便视图和模板使用。"""
         return [s.strip() for s in self.progress_stages.split(',') if s.strip()]
+
+    @property
+    def max_images(self) -> int:
+        """返回此公司的图片数量上限（固定值）。"""
+        return 8
+
+    @property
+    def max_video_size_mb(self) -> int:
+        """返回此公司的视频大小上限（MB）。"""
+        return self.max_video_size
 
 
 # ============================================================
@@ -170,6 +189,12 @@ class ProjectProgress(models.Model):
 
     video_url = models.URLField('视频链接', blank=True, default='')
 
+    video_file = models.FileField(
+        '视频文件', upload_to='progress_videos/',
+        blank=True, null=True,
+        help_text='上传视频文件，支持 MP4、WebM 等格式',
+    )
+
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     class Meta:
@@ -189,3 +214,25 @@ class ProjectProgress(models.Model):
             else:
                 self.stage_name_snapshot = f'阶段{self.current_stage}'
         super().save(*args, **kwargs)
+
+
+# ============================================================
+# ProjectProgressImage — 现场图片上传（替代 JSON 手写）
+# ============================================================
+class ProjectProgressImage(models.Model):
+    """项目进度的现场图片，通过 inline 在 admin 中上传。"""
+
+    project = models.ForeignKey(
+        ProjectProgress, on_delete=models.CASCADE, related_name='progress_images',
+        verbose_name='所属项目',
+    )
+    image = models.ImageField('现场图片', upload_to='progress_images/')
+    sort_order = models.IntegerField('排序', default=0)
+
+    class Meta:
+        ordering = ['sort_order']
+        verbose_name = '现场图片'
+        verbose_name_plural = verbose_name
+
+    def __str__(self):
+        return f'{self.project.customer_name} - 图{self.sort_order}'
