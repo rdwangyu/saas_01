@@ -1,0 +1,38 @@
+<view class="page">
+  <view class="page-header">
+    <text class="page-title">🏡 完工案例</text>
+    <text class="page-sub">每一套，都是<text class="hl">用心之作</text></text>
+  </view>
+
+  <view class="cases-grid">
+    <view class="case-card" wx:for="{{cases}}" wx:key="id" data-id="{{item.id}}" bindtap="playVideo">
+      <view class="case-img-wrap">
+        <image class="case-img" src="{{item.img}}" mode="aspectFill" />
+        <view class="play-overlay">
+          <text class="play-icon">▶</text>
+        </view>
+      </view>
+      <view class="case-body">
+        <text class="case-title">{{item.title}}</text>
+        <text class="case-meta">{{item.meta}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 视频播放浮层 -->
+  <view class="video-mask" wx:if="{{playingVideo}}" bindtap="closeVideo"></view>
+  <view class="video-popup" wx:if="{{playingVideo}}">
+    <view class="video-popup-header">
+      <text class="video-popup-title">{{playingVideo.title}}</text>
+      <text class="video-popup-close" bindtap="closeVideo">✕</text>
+    </view>
+    <video class="video-player"
+           src="{{playingVideo.video}}"
+           autoplay="{{true}}"
+           controls="{{true}}"
+           show-mute-btn="{{false}}"
+           objectFit="contain"
+           style="width:100%; height:400rpx;" />
+    <text class="video-popup-desc">{{playingVideo.desc}}</text>
+  </view>
+</view>

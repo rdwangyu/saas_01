@@ -1,0 +1,23 @@
+/** 全局样式 **/
+page {
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  background-color: #f5f5f5;
+  color: #333;
+  line-height: 1.6;
+  font-size: 28rpx;
+}
+
+/* 通用 */
+.section-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 6rpx;
+}
+.section-sub {
+  font-size: 26rpx;
+  color: #888;
+  display: block;
+  margin-bottom: 36rpx;
+}
+.highlight { color: #4a90d9; }

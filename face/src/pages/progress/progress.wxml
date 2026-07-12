@@ -1,0 +1,46 @@
+<view class="page">
+
+  <!-- 项目信息 -->
+  <view class="project-card">
+    <text class="project-title">{{project.community}} {{project.area}}</text>
+    <text class="project-meta">业主：{{project.name}} · 编号：{{project.id}}</text>
+
+    <view class="progress-bar-wrap">
+      <view class="pb-header">
+        <text class="pb-label">施工进度</text>
+        <text class="pb-percent">{{percent}}%</text>
+      </view>
+      <view class="pb-track">
+        <view class="pb-fill" style="width: {{percent}}%;"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 阶段步骤 -->
+  <view class="stages">
+    <view class="stage-item {{index < project.currentStage ? 'done' : index === project.currentStage ? 'current' : ''}}"
+          wx:for="{{project.stages}}" wx:for-index="i" wx:key="*this">
+      <view class="stage-left">
+        <view class="stage-dot">
+          <text wx:if="{{i < project.currentStage}}">✓</text>
+          <text wx:else>{{i+1}}</text>
+        </view>
+        <view class="stage-line" wx:if="{{i < project.stages.length - 1}}"></view>
+      </view>
+      <view class="stage-body">
+        <text class="stage-name {{i === project.currentStage ? 'cur-name' : ''}}">{{item}}</text>
+        <text class="stage-date" wx:if="{{project.stageDates[i]}}">{{project.stageDates[i]}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 施工照片 3列网格 -->
+  <view class="photos">
+    <text class="photos-title">📸 施工照片（共{{project.photos.length}}张）</text>
+    <view class="photos-grid">
+      <image class="photo-img" wx:for="{{project.photos}}" wx:key="*this"
+             src="{{item}}" mode="aspectFill" bindtap="previewImage" data-src="{{item}}" />
+    </view>
+  </view>
+
+</view>

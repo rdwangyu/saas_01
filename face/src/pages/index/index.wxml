@@ -1,0 +1,86 @@
+<view class="page">
+  <!-- Hero -->
+  <view class="hero">
+    <view class="hero-bg"></view>
+    <view class="hero-content">
+      <text class="hero-badge">白云装修 · 精工品质</text>
+      <text class="hero-title">好装修，<text class="hl">看得见</text></text>
+      <text class="hero-intro">深耕杭州12年 · 累计服务520+家庭</text>
+      <button class="hero-btn" bindtap="goCases">📷 查看完工案例</button>
+    </view>
+  </view>
+
+  <!-- 公司简介 -->
+  <view class="section">
+    <text class="section-title">🏢 白云装修</text>
+    <text class="section-desc">白云装修工程有限公司成立于2014年，集设计、施工、主材代购、全屋定制于一体，二级施工资质，ISO9001认证，让每一位业主装修省心、住得放心。</text>
+    <view class="badges">
+      <text class="badge">🏆 二级资质</text>
+      <text class="badge">📜 ISO9001</text>
+      <text class="badge">🛡️ 500万质保</text>
+    </view>
+  </view>
+
+  <!-- 业务范围 -->
+  <view class="section">
+    <text class="section-title">📋 业务范围</text>
+    <view class="services">
+      <view class="service-item">
+        <text class="s-icon">🏠</text>
+        <text class="s-title">全屋设计</text>
+      </view>
+      <view class="service-item">
+        <text class="s-icon">🔨</text>
+        <text class="s-title">基础施工</text>
+      </view>
+      <view class="service-item">
+        <text class="s-icon">🛋️</text>
+        <text class="s-title">主材代购</text>
+      </view>
+      <view class="service-item">
+        <text class="s-icon">📐</text>
+        <text class="s-title">全屋定制</text>
+      </view>
+      <view class="service-item">
+        <text class="s-icon">💡</text>
+        <text class="s-title">智能家居</text>
+      </view>
+      <view class="service-item">
+        <text class="s-icon">🛡️</text>
+        <text class="s-title">旧房翻新</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 公司优势 -->
+  <view class="section highlight-section">
+    <text class="section-title" style="color:#fff;">✨ 我们的优势</text>
+    <view class="advantages">
+      <view class="adv-item">
+        <text class="adv-icon">📐</text>
+        <text class="adv-title">免费量房</text>
+        <text class="adv-desc">资深设计师上门勘测，精准出图</text>
+      </view>
+      <view class="adv-item">
+        <text class="adv-icon">📋</text>
+        <text class="adv-title">透明报价</text>
+        <text class="adv-desc">费用清晰列明，无增项陷阱</text>
+      </view>
+      <view class="adv-item">
+        <text class="adv-icon">🔍</text>
+        <text class="adv-title">节点验收</text>
+        <text class="adv-desc">每道工序拍照存档，手机随时查看</text>
+      </view>
+      <view class="adv-item">
+        <text class="adv-icon">🛡️</text>
+        <text class="adv-title">售后保障</text>
+        <text class="adv-desc">隐蔽工程5年质保，48小时响应</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 底部按钮 -->
+  <view class="bottom-cta">
+    <button class="cta-btn" bindtap="goProgress">🔍 查看装修进度</button>
+  </view>
+</view>

@@ -1,0 +1,26 @@
+<view class="page">
+
+  <!-- 用户身份 -->
+  <view class="profile">
+    <text class="profile-label">当前用户</text>
+    <text class="profile-name">{{user.name}}</text>
+    <text class="profile-address">{{user.community}} · {{user.building}} {{user.unit}}</text>
+  </view>
+
+  <!-- 菜单 -->
+  <view class="menu-section">
+    <view class="menu-item" bindtap="onContract">
+      <text class="menu-icon">📄</text>
+      <view class="menu-body">
+        <text class="menu-title">合同文件</text>
+        <text class="menu-desc">电子合同与验收单据</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 退出 -->
+  <view class="logout-section">
+    <button class="logout-btn">退出登录</button>
+  </view>
+</view>
