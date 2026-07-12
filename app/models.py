@@ -172,28 +172,21 @@ class ProjectProgress(models.Model):
         verbose_name='所属公司',
     )
 
+    project_name = models.CharField('项目名称', max_length=200, default='')
     customer_name = models.CharField('客户姓名', max_length=100)
     phone = models.CharField('客户电话', max_length=30, blank=True, default='')
     address = models.CharField('项目地址', max_length=300, blank=True, default='')
 
     # current_stage 为 Company.progress_stages 的索引（从 0 开始）
-    current_stage = models.IntegerField('当前阶段序号', default=0,
+    current_stage = models.IntegerField('当前阶段', default=0,
                                         help_text='对应公司项目阶段列表中的序号，从 0 开始')
     stage_name_snapshot = models.CharField('阶段名称快照', max_length=100, blank=True, default='',
                                            help_text='创建/更新时自动保存的阶段名称')
 
     content = models.TextField('进度描述', blank=True, default='')
 
-    # 现场图片集，JSON 格式: ["url1", "url2", ...]
-    images = models.JSONField('现场图片', default=list, blank=True)
-
-    video_url = models.URLField('视频链接', blank=True, default='')
-
-    video_file = models.FileField(
-        '视频文件', upload_to='progress_videos/',
-        blank=True, null=True,
-        help_text='上传视频文件，支持 MP4、WebM 等格式',
-    )
+    # 阶段图片，JSON 格式: {"0": "https://oss.../img1.jpg", "1": "https://oss.../img2.jpg", ...}
+    images = models.JSONField('阶段图片', default=dict, blank=True)
 
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
@@ -203,7 +196,8 @@ class ProjectProgress(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f'[{self.company.name}] {self.customer_name} — {self.stage_name_snapshot}'
+        name = self.project_name or self.customer_name
+        return f'[{self.company.name}] {name} — {self.stage_name_snapshot}'
 
     def save(self, *args, **kwargs):
         """保存时自动填充 stage_name_snapshot。"""
@@ -214,25 +208,3 @@ class ProjectProgress(models.Model):
             else:
                 self.stage_name_snapshot = f'阶段{self.current_stage}'
         super().save(*args, **kwargs)
-
-
-# ============================================================
-# ProjectProgressImage — 现场图片上传（替代 JSON 手写）
-# ============================================================
-class ProjectProgressImage(models.Model):
-    """项目进度的现场图片，通过 inline 在 admin 中上传。"""
-
-    project = models.ForeignKey(
-        ProjectProgress, on_delete=models.CASCADE, related_name='progress_images',
-        verbose_name='所属项目',
-    )
-    image = models.ImageField('现场图片', upload_to='progress_images/')
-    sort_order = models.IntegerField('排序', default=0)
-
-    class Meta:
-        ordering = ['sort_order']
-        verbose_name = '现场图片'
-        verbose_name_plural = verbose_name
-
-    def __str__(self):
-        return f'{self.project.customer_name} - 图{self.sort_order}'

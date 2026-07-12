@@ -87,12 +87,12 @@ class ProjectProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectProgress
         fields = [
-            'id', 'company', 'company_name', 'customer_name', 'phone',
-            'address', 'current_stage', 'stage_name_snapshot',
-            'content', 'images', 'video_url', 'video_file', 'created_at',
+            'id', 'company', 'company_name', 'project_name', 'customer_name',
+            'phone', 'address', 'current_stage', 'stage_name_snapshot',
+            'content', 'images', 'created_at',
         ]
-        read_only_fields = ['id', 'company', 'images', 'video_url',
-                           'video_file', 'stage_name_snapshot', 'created_at']
+        read_only_fields = ['id', 'company', 'images',
+                           'stage_name_snapshot', 'created_at']
 
     def create(self, validated_data):
         """自动绑定 company 为当前用户所属公司。"""
