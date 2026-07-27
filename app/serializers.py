@@ -1,18 +1,8 @@
-"""
-装修公司 SaaS 系统 — DRF 序列化器
-
-- company 字段自动绑定当前用户所属公司，不可手动指定
-- 超级管理员可以手动指定 company
-"""
-
 from rest_framework import serializers
 
 from .models import Company, User, Case, ProjectProgress
 
 
-# ============================================================
-# Company
-# ============================================================
 class CompanySerializer(serializers.ModelSerializer):
     stage_list = serializers.ListField(child=serializers.CharField(), read_only=True)
 
@@ -25,9 +15,6 @@ class CompanySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
 
-# ============================================================
-# User
-# ============================================================
 class UserSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     role_display = serializers.CharField(source='get_role_display', read_only=True)
@@ -44,7 +31,6 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        """创建用户时自动设置密码。"""
         password = validated_data.pop('password', None)
         user = super().create(validated_data)
         if password:
@@ -53,9 +39,6 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 
-# ============================================================
-# Case
-# ============================================================
 class CaseSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
 
@@ -70,7 +53,6 @@ class CaseSerializer(serializers.ModelSerializer):
                            'created_at']
 
     def create(self, validated_data):
-        """自动绑定 company 为当前用户所属公司（超级管理员除外）。"""
         request = self.context.get('request')
         if request and hasattr(request.user, 'company'):
             if not request.user.is_superuser:
@@ -78,9 +60,6 @@ class CaseSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
-# ============================================================
-# ProjectProgress
-# ============================================================
 class ProjectProgressSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
 
@@ -95,7 +74,6 @@ class ProjectProgressSerializer(serializers.ModelSerializer):
                            'stage_name_snapshot', 'created_at']
 
     def create(self, validated_data):
-        """自动绑定 company 为当前用户所属公司。"""
         request = self.context.get('request')
         if request and hasattr(request.user, 'company'):
             if not request.user.is_superuser:
