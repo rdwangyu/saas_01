@@ -10,8 +10,8 @@ class Company(models.Model):
     name = models.CharField('公司名称', max_length=200)
     logo = models.ImageField('Logo', upload_to='company_logos/', blank=True, null=True)
     description = models.TextField('公司简介', blank=True, default='')
-    phone = models.CharField('联系电话', max_length=30, blank=True, default='')
-    address = models.CharField('公司地址', max_length=300, blank=True, default='')
+    phone = models.CharField('联系电话', max_length=30, default='')
+    address = models.CharField('公司地址', max_length=300, default='')
     progress_stages = models.CharField(
         '项目阶段',
         max_length=500,
@@ -33,7 +33,7 @@ class Company(models.Model):
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     class Meta:
-        verbose_name = '装修公司'
+        verbose_name = '公司'
         verbose_name_plural = verbose_name
         ordering = ['-created_at']
 
@@ -66,6 +66,7 @@ class User(AbstractUser):
         verbose_name='所属公司',
         help_text='超级管理员可以不绑定公司',
     )
+    phone = models.CharField('联系电话', max_length=30, default='')
     role = models.CharField(
         '角色',
         max_length=20,
@@ -95,7 +96,7 @@ class Case(models.Model):
     images = models.JSONField('图片集', default=list, blank=True)
     video_url = models.URLField('视频链接', blank=True, default='')
     description = models.TextField('案例描述', blank=True, default='')
-    style = models.CharField('装修风格', max_length=100, blank=True, default='')
+    style = models.CharField('风格', max_length=100, blank=True, default='')
     area = models.CharField('面积', max_length=50, blank=True, default='',
                             help_text='例如: 120㎡')
     budget = models.DecimalField('预算（万元）', max_digits=10, decimal_places=2,
@@ -103,7 +104,7 @@ class Case(models.Model):
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
 
     class Meta:
-        verbose_name = '装修案例'
+        verbose_name = '案例'
         verbose_name_plural = verbose_name
         ordering = ['-created_at']
 

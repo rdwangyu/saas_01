@@ -140,17 +140,17 @@ class CompanyAdmin(admin.ModelAdmin):
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     list_display = [
-        'username', 'company', 'role_display', 'email', 'is_active', 'date_joined',
+        'username', 'company', 'role_display', 'phone', 'email', 'is_active', 'date_joined',
     ]
     list_filter = ['is_active', 'company']
-    search_fields = ['username', 'email', 'company__name']
+    search_fields = ['username', 'email', 'phone', 'company__name']
 
     fieldsets = (
         ('登录信息', {
             'fields': ('username', 'password'),
         }),
         ('个人信息', {
-            'fields': ('first_name', 'last_name', 'email'),
+            'fields': ('first_name', 'last_name', 'phone', 'email'),
         }),
         ('公司与角色', {
             'fields': ('company', 'role'),
@@ -163,7 +163,7 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'email', 'company', 'password1', 'password2'),
+            'fields': ('username', 'phone', 'email', 'company', 'password1', 'password2'),
         }),
     )
 
@@ -369,6 +369,6 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
         return super().get_queryset(request).select_related('company')
 
 
-admin.site.site_header = '装修公司 SaaS 管理后台'
-admin.site.site_title = '装修公司 SaaS'
+admin.site.site_header = '白云企业管理'
+admin.site.site_title = '白云企业管理'
 admin.site.index_title = '控制面板'
