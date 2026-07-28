@@ -4,13 +4,11 @@ from .models import Company, User, Case, ProjectProgress
 
 
 class CompanySerializer(serializers.ModelSerializer):
-    stage_list = serializers.ListField(child=serializers.CharField(), read_only=True)
-
     class Meta:
         model = Company
         fields = [
             'id', 'name', 'logo', 'description', 'phone', 'address',
-            'progress_stages', 'stage_list', 'status', 'created_at',
+            'status', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -46,10 +44,10 @@ class CaseSerializer(serializers.ModelSerializer):
         model = Case
         fields = [
             'id', 'company', 'company_name', 'title', 'cover',
-            'images', 'video_url', 'description',
+            'images', 'video', 'description',
             'style', 'area', 'budget', 'created_at',
         ]
-        read_only_fields = ['id', 'company', 'images', 'video_url',
+        read_only_fields = ['id', 'company', 'images', 'video',
                            'created_at']
 
     def create(self, validated_data):
@@ -62,16 +60,18 @@ class CaseSerializer(serializers.ModelSerializer):
 
 class ProjectProgressSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
+    progress_stage = serializers.IntegerField(read_only=True)
+    current_stage_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = ProjectProgress
         fields = [
             'id', 'company', 'company_name', 'project_name', 'customer_name',
-            'phone', 'address', 'current_stage', 'stage_name_snapshot',
-            'content', 'images', 'created_at',
+            'phone', 'address', 'created_at',
+            'progress_stage', 'current_stage_name',
         ]
-        read_only_fields = ['id', 'company', 'images',
-                           'stage_name_snapshot', 'created_at']
+        read_only_fields = ['id', 'company', 'created_at',
+                           'progress_stage', 'current_stage_name']
 
     def create(self, validated_data):
         request = self.context.get('request')

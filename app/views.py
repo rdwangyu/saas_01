@@ -54,11 +54,7 @@ class ProjectProgressViewSet(CompanyFilteredViewSet):
     serializer_class = ProjectProgressSerializer
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        stage = self.request.query_params.get('stage')
-        if stage is not None:
-            qs = qs.filter(current_stage=int(stage))
-        return qs
+        return super().get_queryset()
 
 
 class CompanyViewSet(viewsets.ReadOnlyModelViewSet):

@@ -1,10 +1,11 @@
+from django.conf import settings
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
 
 from .models import (
-    Company, User, Case, ProjectProgress,
+    Company, User, Case, ProjectProgress, STAGE_FIELDS,
 )
 from .permissions import CompanyAdminMixin
 
@@ -56,10 +57,6 @@ class CompanyAdmin(admin.ModelAdmin):
         }),
         ('联系方式', {
             'fields': ('phone', 'address'),
-        }),
-        ('项目配置', {
-            'fields': ('progress_stages',),
-            'description': '以英文逗号分隔的阶段名称，例如: 开始,水电,泥瓦,木工,验收',
         }),
         ('视频限制', {
             'fields': ('max_video_size',),
@@ -119,7 +116,7 @@ class CompanyAdmin(admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         readonly = list(super().get_readonly_fields(request, obj) or [])
         if not request.user.is_superuser:
-            for f in ['progress_stages', 'max_video_size', 'status']:
+            for f in ['max_video_size', 'status']:
                 if f not in readonly:
                     readonly.append(f)
         return readonly
@@ -244,7 +241,7 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
             'fields': ('style', 'area', 'budget'),
         }),
         ('视频', {
-            'fields': ('video_url',),
+            'fields': ('video',),
         }),
         ('时间', {
             'fields': ('created_at',),
@@ -253,8 +250,9 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj=obj, **kwargs)
-        if 'cover' in form.base_fields:
-            form.base_fields['cover'].widget = forms.FileInput()
+        for f in ('cover', 'video'):
+            if f in form.base_fields:
+                form.base_fields[f].widget = forms.FileInput()
         return form
 
     def cover_preview(self, obj):
@@ -263,9 +261,9 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
 
     def budget_display(self, obj):
         if obj.budget:
-            return f'{obj.budget} 万'
+            return obj.budget
         return '-'
-    budget_display.short_description = '预算'
+    budget_display.short_description = '预算（万元）'
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('company')
@@ -279,7 +277,7 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
     ]
     list_display_links = ['id', 'project_name']
     list_filter = ['company', 'created_at']
-    search_fields = ['project_name', 'customer_name', 'phone', 'address', 'content', 'company__name']
+    search_fields = ['project_name', 'customer_name', 'phone', 'address', 'company__name']
     readonly_fields = ['created_at']
     date_hierarchy = 'created_at'
 
@@ -287,83 +285,55 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
         ('基本信息', {
             'fields': ('company', 'project_name', 'customer_name', 'phone', 'address'),
         }),
-        ('进度信息', {
-            'fields': ('current_stage', 'content'),
-        }),
         ('时间', {
             'fields': ('created_at',),
         }),
     )
 
-    def _resolve_company(self, request, obj):
-        if obj and obj.pk and obj.company_id:
-            return obj.company
-        if request and request.user.company:
-            return request.user.company
-        return None
-
     def get_form(self, request, obj=None, **kwargs):
-        kwargs['fields'] = [
-            'company', 'project_name', 'customer_name', 'phone', 'address',
-            'current_stage', 'content',
-        ]
+        base_fields = ['company', 'project_name', 'customer_name', 'phone', 'address']
+        for i in range(STAGE_FIELDS):
+            base_fields += [f'stage_name_{i}', f'stage_image_{i}', f'stage_desc_{i}']
+        kwargs['fields'] = base_fields
         form = super().get_form(request, obj=obj, **kwargs)
-        company = self._resolve_company(request, obj)
-        stages = company.stage_list if company else []
 
-        if stages and 'current_stage' in form.base_fields:
-            form.base_fields['current_stage'].widget = forms.Select(
-                choices=[(i, name) for i, name in enumerate(stages)]
-            )
-            form.base_fields['current_stage'].help_text = '选择当前项目所处的阶段'
-
-        existing = obj.images if obj and isinstance(obj.images, dict) else {}
-        for i, name in enumerate(stages):
-            field_name = f'stage_image_{i}'
-            form.base_fields[field_name] = forms.URLField(
-                label=f'「{name}」阶段图片',
-                required=False,
-                initial=existing.get(str(i), ''),
-                help_text='阿里云 OSS 图片地址（选填）',
-            )
+        for i in range(STAGE_FIELDS):
+            fn = f'stage_name_{i}'
+            if fn in form.base_fields:
+                form.base_fields[fn].widget = forms.TextInput(attrs={'placeholder': '选填阶段名称'})
+            si = f'stage_image_{i}'
+            if si in form.base_fields:
+                form.base_fields[si].widget = forms.FileInput()
+            fd = f'stage_desc_{i}'
+            if fd in form.base_fields:
+                form.base_fields[fd].widget = forms.Textarea(attrs={'rows': 2, 'placeholder': '选填阶段描述'})
 
         return form
 
     def get_fieldsets(self, request, obj=None):
         fieldsets = list(super().get_fieldsets(request, obj))
-        company = self._resolve_company(request, obj)
-        stages = company.stage_list if company else []
-        if stages:
-            stage_fields = tuple(f'stage_image_{i}' for i in range(len(stages)))
-            fieldsets.insert(2, ('阶段图片', {
+        for i in range(STAGE_FIELDS):
+            stage_fields = (f'stage_name_{i}', f'stage_image_{i}', f'stage_desc_{i}')
+            fieldsets.insert(1 + i, (f'阶段 {i + 1}', {
                 'fields': stage_fields,
-                'description': '每个阶段可填写一个阿里云 OSS 图片地址（选填）',
+                'classes': ('collapse',),
             }))
         return fieldsets
 
     def save_model(self, request, obj, form, change):
-        stage_images = {}
-        for key, value in form.cleaned_data.items():
-            if key.startswith('stage_image_') and value:
-                idx = key.replace('stage_image_', '')
-                stage_images[idx] = value
-        obj.images = stage_images
         super().save_model(request, obj, form, change)
 
     def stage_display(self, obj):
-        stages = obj.company.stage_list if obj.company_id else []
-        if 0 <= obj.current_stage < len(stages):
-            stage = stages[obj.current_stage]
-        else:
-            stage = obj.stage_name_snapshot or f'阶段{obj.current_stage}'
+        idx = obj.progress_stage
+        stage = obj.current_stage_name
         colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336']
-        idx = obj.current_stage % len(colors)
+        ci = idx % len(colors) if idx >= 0 else len(colors) - 1
         return format_html(
             '<span style="background:{}; color:#fff; padding:2px 10px; '
             'border-radius:12px; font-size:12px;">{}</span>',
-            colors[idx], stage,
+            colors[ci], stage,
         )
-    stage_display.short_description = '当前阶段'
+    stage_display.short_description = '当前进度'
 
     def get_queryset(self, request):
         return super().get_queryset(request).select_related('company')

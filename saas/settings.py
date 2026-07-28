@@ -95,13 +95,29 @@ USE_I18N = True
 USE_TZ = True
 
 # ============================================================
-# 静态文件 & 媒体文件
+# 静态文件
 # ============================================================
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+# ============================================================
+# 阿里云 OSS — 媒体文件存储
+# ============================================================
+STORAGES = {
+    'default': {
+        'BACKEND': 'app.oss_storage.OSSStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+MEDIA_URL = f'https://byqg-image.oss-cn-beijing.aliyuncs.com/'
+
+ALIYUN_OSS_ACCESS_KEY_ID = ''
+ALIYUN_OSS_ACCESS_KEY_SECRET = ''
+ALIYUN_OSS_BUCKET_NAME = 'byqg-image'
+ALIYUN_OSS_ENDPOINT = 'oss-cn-beijing.aliyuncs.com'
+ALIYUN_OSS_BUCKET_DOMAIN = 'byqg-image.oss-cn-beijing.aliyuncs.com'
 
 # ============================================================
 # DRF 配置 — JWT 鉴权
