@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import (
 
 from .views import (
     CurrentUserViewSet,
+    UserViewSet,
     CompanyViewSet,
     CaseViewSet,
     ProjectProgressViewSet,
@@ -16,6 +17,7 @@ router = DefaultRouter()
 router.register(r'cases', CaseViewSet, basename='case')
 router.register(r'projects', ProjectProgressViewSet, basename='project')
 router.register(r'companies', CompanyViewSet, basename='company')
+router.register(r'users', UserViewSet, basename='user')
 
 urlpatterns = [
     path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),

@@ -7,10 +7,18 @@ class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
         fields = [
-            'id', 'name', 'logo', 'description', 'phone', 'address',
+            'id', 'name', 'credit_code', 'logo', 'description', 'phone', 'address',
             'status', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        if request and not request.user.is_superuser:
+            self.fields['credit_code'].read_only = True
+            self.fields['status'].read_only = True
+            self.fields['name'].read_only = True
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -50,6 +58,14 @@ class CaseSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'company', 'images', 'video',
                            'created_at']
 
+    def validate_cover(self, value):
+        if value:
+            ext = value.name.rsplit('.', 1)[-1].lower() if '.' in value.name else ''
+            allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'svg']
+            if ext not in allowed:
+                raise serializers.ValidationError('封面图仅支持图片格式（jpg/jpeg/png/gif/webp/bmp/tiff/svg）')
+        return value
+
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request.user, 'company'):
@@ -61,8 +77,8 @@ class CaseSerializer(serializers.ModelSerializer):
 class ProjectStageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectStage
-        fields = ['id', 'name', 'image_0', 'image_1', 'image_2', 'description', 'updated_time', 'created_time']
-        read_only_fields = ['id', 'updated_time', 'created_time']
+        fields = ['id', 'name', 'image_0', 'image_1', 'image_2', 'description', 'updated_at', 'created_at']
+        read_only_fields = ['id', 'updated_at', 'created_at']
 
 
 class ProjectProgressSerializer(serializers.ModelSerializer):

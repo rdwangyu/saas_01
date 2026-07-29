@@ -49,6 +49,7 @@ def case_media_path(instance, filename):
 
 class Company(models.Model):
     name = models.CharField('公司名称', max_length=200)
+    credit_code = models.CharField('社会统一信用代码', max_length=18, blank=True, default='', help_text='仅系统管理员可编辑')
     logo = models.ImageField('Logo', upload_to=company_logo_path, blank=True, null=True)
     description = models.TextField('公司简介', blank=True, default='')
     phone = models.CharField('联系电话', max_length=30, default='')
@@ -118,8 +119,7 @@ class User(AbstractUser):
         null=True,
         blank=True,
         related_name='users',
-        verbose_name='所属公司',
-        help_text='超级管理员可以不绑定公司',
+        verbose_name='所属公司'
     )
     phone = models.CharField('联系电话', max_length=30, default='')
     role = models.CharField(
@@ -147,7 +147,11 @@ class Case(models.Model):
         verbose_name='所属公司',
     )
     title = models.CharField('案例标题', max_length=200)
-    cover = models.ImageField('封面图', upload_to=case_media_path, null=True)
+    cover = models.ImageField('封面图', upload_to=case_media_path, null=True,
+        validators=[FileExtensionValidator(
+            allowed_extensions=['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tiff', 'svg'],
+            message='封面图仅支持图片格式（jpg/jpeg/png/gif/webp/bmp/tiff/svg）',
+        )])
     images = models.JSONField('图片集', default=list, blank=True)
     video = models.FileField('视频文件', upload_to=case_media_path, null=True,
         validators=[FileExtensionValidator(
