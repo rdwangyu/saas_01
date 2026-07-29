@@ -4,8 +4,26 @@ from django.db import models
 from django.utils.deconstruct import deconstructible
 from django.utils.text import slugify
 
-
 MAX_SLUG_LEN = 16
+
+class CommonStatus(models.TextChoices):
+    ACTIVE = 'active', '启用'
+    INACTIVE = 'inactive', '停用'
+
+
+class SoftDeleteQuerySet(models.QuerySet):
+    """软删除：将 status 改为 INACTIVE 代替真删除。"""
+    def delete(self):
+        self.update(status=CommonStatus.INACTIVE)
+
+    def hard_delete(self):
+        super().delete()
+
+
+class SoftDeleteManager(models.Manager):
+    """返回 SoftDeleteQuerySet 的管理器。"""
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db)
 
 
 def _safe_slug(text: str, fallback: str) -> str:
@@ -30,10 +48,6 @@ def case_media_path(instance, filename):
 
 
 class Company(models.Model):
-    class Status(models.TextChoices):
-        ACTIVE = 'active', '启用'
-        INACTIVE = 'inactive', '停用'
-
     name = models.CharField('公司名称', max_length=200)
     logo = models.ImageField('Logo', upload_to=company_logo_path, blank=True, null=True)
     description = models.TextField('公司简介', blank=True, default='')
@@ -42,8 +56,8 @@ class Company(models.Model):
     status = models.CharField(
         '状态',
         max_length=20,
-        choices=Status.choices,
-        default=Status.ACTIVE,
+        choices=CommonStatus.choices,
+        default=CommonStatus.ACTIVE,
     )
     max_video_size = models.IntegerField(
         '视频大小限制（MB）',
@@ -52,6 +66,8 @@ class Company(models.Model):
         help_text='影响案例和项目进度的视频上传上限',
     )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    objects = SoftDeleteManager()
 
     class Meta:
         verbose_name = '公司'
@@ -67,11 +83,18 @@ class Company(models.Model):
                 old = Company.objects.get(pk=self.pk)
                 if old.logo and old.logo != self.logo:
                     old.logo.delete(save=False)
+                if old.status == CommonStatus.ACTIVE and self.status == CommonStatus.INACTIVE:
+                    self.cases.all().update(status=CommonStatus.INACTIVE)
+                    self.projects.all().update(status=CommonStatus.INACTIVE)
             except Company.DoesNotExist:
                 pass
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
+        self.status = CommonStatus.INACTIVE
+        self.save(update_fields=['status'])
+
+    def hard_delete(self, *args, **kwargs):
         if self.logo:
             self.logo.delete(save=False)
         super().delete(*args, **kwargs)
@@ -136,7 +159,15 @@ class Case(models.Model):
     area = models.PositiveSmallIntegerField('面积（㎡）', null=True, blank=True)
     budget = models.DecimalField('预算（万元）', max_digits=10, decimal_places=2,
                                  null=True, blank=True)
+    status = models.CharField(
+        '状态',
+        max_length=20,
+        choices=CommonStatus.choices,
+        default=CommonStatus.ACTIVE,
+    )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    objects = SoftDeleteManager()
 
     class Meta:
         verbose_name = '案例'
@@ -160,6 +191,10 @@ class Case(models.Model):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
+        self.status = CommonStatus.INACTIVE
+        self.save(update_fields=['status'])
+
+    def hard_delete(self, *args, **kwargs):
         for f in ['cover', 'video']:
             val = getattr(self, f, None)
             if val:
@@ -194,6 +229,8 @@ class ProjectStage(models.Model):
     description = models.TextField('阶段描述', blank=True, default='')
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
     updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    objects = SoftDeleteManager()
 
     class Meta:
         verbose_name = '项目阶段'
@@ -235,7 +272,15 @@ class ProjectProgress(models.Model):
     customer_name = models.CharField('客户姓名', max_length=100)
     phone = models.CharField('客户电话', max_length=30)
     address = models.CharField('项目地址', max_length=300)
+    status = models.CharField(
+        '状态',
+        max_length=20,
+        choices=CommonStatus.choices,
+        default=CommonStatus.ACTIVE,
+    )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    objects = SoftDeleteManager()
 
     class Meta:
         verbose_name = '项目进度'
@@ -245,6 +290,13 @@ class ProjectProgress(models.Model):
     def __str__(self):
         name = self.project_name or self.customer_name
         return f'[{self.company.name}] {name}'
+
+    def delete(self, *args, **kwargs):
+        self.status = CommonStatus.INACTIVE
+        self.save(update_fields=['status'])
+
+    def hard_delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
 
 
     @property

@@ -5,7 +5,7 @@ from django.db import models as db_models
 from django.utils.html import format_html
 
 from .models import (
-    Company, User, Case, ProjectProgress, ProjectStage,
+    Company, User, Case, ProjectProgress, ProjectStage, CommonStatus,
 )
 from .permissions import CompanyAdminMixin
 
@@ -134,7 +134,7 @@ class UserAdmin(BaseUserAdmin):
         ('公司与角色', {
             'fields': ('company', 'role'),
         }),
-        ('时间', {
+        ('状态', {
             'fields': ('last_login', 'date_joined'),
         }),
     )
@@ -207,7 +207,7 @@ class UserAdmin(BaseUserAdmin):
 class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
     list_display = [
         'id', 'cover_preview', 'title', 'company', 'style', 'area',
-        'budget_display', 'created_at',
+        'budget_display', 'status', 'created_at',
     ]
     list_display_links = ['id', 'title']
     list_filter = ['style', 'created_at', 'company']
@@ -225,9 +225,9 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
         ('视频', {
             'fields': ('video',),
         }),
-        ('时间', {
-            'fields': ('created_at',),
-        }),
+        ('状态', {
+            'fields': ('status', 'created_at'),
+        })
     )
 
     def get_form(self, request, obj=None, **kwargs):
@@ -255,12 +255,15 @@ class ProjectStageInline(admin.StackedInline):
     model = ProjectStage
     extra = 1
     can_delete = False
-    fieldsets = [(
-        None,
-        {
-            'fields': ['name', 'image_0', 'image_1', 'image_2', 'created_at', 'updated_at', 'description']
-        }
-    )]
+    fieldsets = (
+        (None, {
+            'fields': (
+                ('name', 'created_at', 'updated_at'),
+                ('image_0', 'image_1', 'image_2'),
+                'description',
+            ),
+        }),
+    )
     readonly_fields = ['created_at', 'updated_at']
     ordering = ('created_at',)
 
@@ -269,7 +272,7 @@ class ProjectStageInline(admin.StackedInline):
 class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
     list_display = [
         'id', 'project_name', 'customer_name', 'stage_display', 'company',
-        'phone', 'created_at',
+        'phone', 'status', 'created_at',
     ]
     list_display_links = ['id', 'project_name']
     list_filter = ['company', 'created_at']
@@ -282,9 +285,9 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
         ('基本信息', {
             'fields': ('company', 'project_name', 'customer_name', 'phone', 'address'),
         }),
-        ('时间', {
-            'fields': ('created_at',),
-        }),
+        ('状态', {
+            'fields': ('status', 'created_at'),
+        })
     )
 
     def save_model(self, request, obj, form, change):
