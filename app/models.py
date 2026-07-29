@@ -5,16 +5,27 @@ from django.utils.deconstruct import deconstructible
 from django.utils.text import slugify
 
 
+MAX_SLUG_LEN = 16
+
+
+def _safe_slug(text: str, fallback: str) -> str:
+    """slugify 后截取最多 MAX_SLUG_LEN 个字符，避免文件路径过长"""
+    s = slugify(text, allow_unicode=True)
+    if not s:
+        return fallback
+    return s[:MAX_SLUG_LEN]
+
+
 def company_logo_path(instance, filename):
     ext = filename.rsplit('.', 1)[-1] if '.' in filename else 'png'
-    safe_name = slugify(instance.name, allow_unicode=True) or 'company'
+    safe_name = _safe_slug(instance.name, 'company')
     return f'company_logo/{safe_name}_logo.{ext}'
 
 
 def case_media_path(instance, filename):
     ext = filename.rsplit('.', 1)[-1] if '.' in filename else 'bin'
-    safe_company = slugify(instance.company.name, allow_unicode=True) or 'unknown'
-    safe_title = slugify(instance.title, allow_unicode=True) or 'untitled'
+    safe_company = _safe_slug(instance.company.name, 'unknown')
+    safe_title = _safe_slug(instance.title, 'untitled')
     return f'company_case/{safe_company}_case_{safe_title}.{ext}'
 
 
@@ -156,21 +167,61 @@ class Case(models.Model):
         super().delete(*args, **kwargs)
 
 
-STAGE_FIELDS = 16
-
-
 @deconstructible
 class stage_image_path:
-    def __init__(self, index):
-        self.index = index
+    def __init__(self, image_num):
+        self.image_num = image_num
 
     def __call__(self, instance, filename):
         ext = filename.rsplit('.', 1)[-1] if '.' in filename else 'jpg'
-        safe_company = slugify(instance.company.name, allow_unicode=True) or 'unknown'
-        safe_project = slugify(instance.project_name, allow_unicode=True) or 'unknown'
-        stage_name = getattr(instance, f'stage_name_{self.index}', '') or f'stage{self.index}'
-        safe_stage = slugify(stage_name, allow_unicode=True) or f'stage{self.index}'
-        return f'company_project_progress/{safe_company}_{safe_project}_{safe_stage}.{ext}'
+        safe_company = _safe_slug(instance.project.company.name, 'unknown')
+        safe_project = _safe_slug(instance.project.project_name, 'unknown')
+        safe_stage = _safe_slug(instance.name, 'unknown')
+        return f'company_project_progress/{safe_company}_{safe_project}_{safe_stage}_{self.image_num}.{ext}'
+
+
+class ProjectStage(models.Model):
+    project = models.ForeignKey(
+        'ProjectProgress',
+        on_delete=models.CASCADE,
+        related_name='stages',
+        verbose_name='所属项目',
+    )
+    name = models.CharField('阶段名称', max_length=100, blank=True, default='')
+    image_0 = models.ImageField('图片1', upload_to=stage_image_path(0), blank=True, null=True)
+    image_1 = models.ImageField('图片2', upload_to=stage_image_path(1), blank=True, null=True)
+    image_2 = models.ImageField('图片3', upload_to=stage_image_path(2), blank=True, null=True)
+    description = models.TextField('阶段描述', blank=True, default='')
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    updated_at = models.DateTimeField('更新时间', auto_now=True)
+
+    class Meta:
+        verbose_name = '项目阶段'
+        verbose_name_plural = verbose_name
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'#{self.name}' if self.name is not None else '#'
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            try:
+                old = ProjectStage.objects.get(pk=self.pk)
+                for f in ['image_0', 'image_1', 'image_2']:
+                    old_val = getattr(old, f, None)
+                    new_val = getattr(self, f, None)
+                    if old_val and old_val != new_val:
+                        old_val.delete(save=False)
+            except ProjectStage.DoesNotExist:
+                pass
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        for f in ['image_0', 'image_1', 'image_2']:
+            val = getattr(self, f, None)
+            if val:
+                val.delete(save=False)
+        super().delete(*args, **kwargs)
 
 
 class ProjectProgress(models.Model):
@@ -195,44 +246,11 @@ class ProjectProgress(models.Model):
         name = self.project_name or self.customer_name
         return f'[{self.company.name}] {name}'
 
-    def save(self, *args, **kwargs):
-        if self.pk:
-            try:
-                old = ProjectProgress.objects.get(pk=self.pk)
-                for i in range(STAGE_FIELDS):
-                    old_val = getattr(old, f'stage_image_{i}', None)
-                    new_val = getattr(self, f'stage_image_{i}', None)
-                    if old_val and old_val != new_val:
-                        old_val.delete(save=False)
-            except ProjectProgress.DoesNotExist:
-                pass
-        super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        for i in range(STAGE_FIELDS):
-            val = getattr(self, f'stage_image_{i}', None)
-            if val:
-                val.delete(save=False)
-        super().delete(*args, **kwargs)
-
-    @property
-    def progress_stage(self):
-        for i in range(STAGE_FIELDS - 1, -1, -1):
-            if getattr(self, f'stage_name_{i}', '') or \
-               getattr(self, f'stage_image_{i}', '') or \
-               getattr(self, f'stage_desc_{i}', ''):
-                return i
-        return -1
 
     @property
     def current_stage_name(self):
-        idx = self.progress_stage
-        if idx >= 0:
-            return getattr(self, f'stage_name_{idx}', '') or f'阶段{idx + 1}'
-        return '未开始'
-
-
-for i in range(STAGE_FIELDS):
-    ProjectProgress.add_to_class(f'stage_name_{i}', models.CharField(f'阶段{i+1}名称', max_length=100, blank=True, default=''))
-    ProjectProgress.add_to_class(f'stage_image_{i}', models.ImageField(f'阶段{i+1}图片', upload_to=stage_image_path(i), blank=True, null=True))
-    ProjectProgress.add_to_class(f'stage_desc_{i}', models.TextField(f'阶段{i+1}描述', blank=True, default=''))
+        last = None
+        for stage in self.stages.all().order_by('-created_at'):
+            if stage.image_0 or stage.image_1 or stage.image_2 or stage.description:
+                last = stage
+        return last.name if last is not None else '未开始'

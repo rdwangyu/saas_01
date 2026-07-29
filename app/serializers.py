@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Company, User, Case, ProjectProgress
+from .models import Company, User, Case, ProjectProgress, ProjectStage
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -58,20 +58,28 @@ class CaseSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
 
+class ProjectStageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectStage
+        fields = ['id', 'name', 'image_0', 'image_1', 'image_2', 'description', 'updated_time', 'created_time']
+        read_only_fields = ['id', 'updated_time', 'created_time']
+
+
 class ProjectProgressSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     progress_stage = serializers.IntegerField(read_only=True)
     current_stage_name = serializers.CharField(read_only=True)
+    stages = ProjectStageSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProjectProgress
         fields = [
             'id', 'company', 'company_name', 'project_name', 'customer_name',
             'phone', 'address', 'created_at',
-            'progress_stage', 'current_stage_name',
+            'current_stage_name', 'stages',
         ]
         read_only_fields = ['id', 'company', 'created_at',
-                           'progress_stage', 'current_stage_name']
+                           'progress_stage', 'current_stage_name', 'stages']
 
     def create(self, validated_data):
         request = self.context.get('request')

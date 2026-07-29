@@ -1,11 +1,11 @@
-from django.conf import settings
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.db import models as db_models
 from django.utils.html import format_html
 
 from .models import (
-    Company, User, Case, ProjectProgress, STAGE_FIELDS,
+    Company, User, Case, ProjectProgress, ProjectStage,
 )
 from .permissions import CompanyAdminMixin
 
@@ -18,24 +18,6 @@ def image_preview(obj, field_name, width=80):
             img.url, width, width,
         )
     return '-'
-
-
-def json_display(value, max_items=5):
-    if not value:
-        return '-'
-    if isinstance(value, list):
-        items = value[:max_items]
-        html = '<ul style="margin:0; padding-left:16px;">'
-        for item in items:
-            if isinstance(item, str) and item.startswith(('http://', 'https://', '/')):
-                html += f'<li><a href="{item}" target="_blank">📎 链接</a></li>'
-            else:
-                html += f'<li>{item}</li>'
-        if len(value) > max_items:
-            html += f'<li>... 共 {len(value)} 项</li>'
-        html += '</ul>'
-        return format_html(html)
-    return format_html('<pre style="margin:0; font-size:12px;">{}</pre>', str(value))
 
 
 @admin.register(Company)
@@ -269,6 +251,20 @@ class CaseAdmin(CompanyAdminMixin, admin.ModelAdmin):
         return super().get_queryset(request).select_related('company')
 
 
+class ProjectStageInline(admin.StackedInline):
+    model = ProjectStage
+    extra = 1
+    can_delete = False
+    fieldsets = [(
+        None,
+        {
+            'fields': ['name', 'image_0', 'image_1', 'image_2', 'created_at', 'updated_at', 'description']
+        }
+    )]
+    readonly_fields = ['created_at', 'updated_at']
+    ordering = ('created_at',)
+
+
 @admin.register(ProjectProgress)
 class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
     list_display = [
@@ -279,6 +275,7 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
     list_filter = ['company', 'created_at']
     search_fields = ['project_name', 'customer_name', 'phone', 'address', 'company__name']
     readonly_fields = ['created_at']
+    inlines = [ProjectStageInline]
     date_hierarchy = 'created_at'
 
     fieldsets = (
@@ -290,53 +287,15 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
         }),
     )
 
-    def get_form(self, request, obj=None, **kwargs):
-        base_fields = ['company', 'project_name', 'customer_name', 'phone', 'address']
-        for i in range(STAGE_FIELDS):
-            base_fields += [f'stage_name_{i}', f'stage_image_{i}', f'stage_desc_{i}']
-        kwargs['fields'] = base_fields
-        form = super().get_form(request, obj=obj, **kwargs)
-
-        for i in range(STAGE_FIELDS):
-            fn = f'stage_name_{i}'
-            if fn in form.base_fields:
-                form.base_fields[fn].widget = forms.TextInput(attrs={'placeholder': '选填阶段名称'})
-            si = f'stage_image_{i}'
-            if si in form.base_fields:
-                form.base_fields[si].widget = forms.FileInput()
-            fd = f'stage_desc_{i}'
-            if fd in form.base_fields:
-                form.base_fields[fd].widget = forms.Textarea(attrs={'rows': 2, 'placeholder': '选填阶段描述'})
-
-        return form
-
-    def get_fieldsets(self, request, obj=None):
-        fieldsets = list(super().get_fieldsets(request, obj))
-        for i in range(STAGE_FIELDS):
-            stage_fields = (f'stage_name_{i}', f'stage_image_{i}', f'stage_desc_{i}')
-            fieldsets.insert(1 + i, (f'阶段 {i + 1}', {
-                'fields': stage_fields,
-                'classes': ('collapse',),
-            }))
-        return fieldsets
-
     def save_model(self, request, obj, form, change):
-        super().save_model(request, obj, form, change)
+        obj.save()
 
     def stage_display(self, obj):
-        idx = obj.progress_stage
-        stage = obj.current_stage_name
-        colors = ['#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336']
-        ci = idx % len(colors) if idx >= 0 else len(colors) - 1
-        return format_html(
-            '<span style="background:{}; color:#fff; padding:2px 10px; '
-            'border-radius:12px; font-size:12px;">{}</span>',
-            colors[ci], stage,
-        )
+        return obj.current_stage_name
     stage_display.short_description = '当前进度'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('company')
+        return super().get_queryset(request).select_related('company').prefetch_related('stages')
 
 
 admin.site.site_header = '白云企业管理'
