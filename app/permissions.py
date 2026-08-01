@@ -23,6 +23,8 @@ class CompanyAdminMixin:
     def has_change_permission(self, request, obj=None):
         if request.user.is_superuser:
             return True
+        if obj is not None:
+            return obj == request.user
         return self._is_company_user(request.user)
 
     def has_delete_permission(self, request, obj=None):

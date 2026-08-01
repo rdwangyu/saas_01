@@ -51,7 +51,7 @@ class CompanyForm(forms.ModelForm):
 
 
 @admin.register(Company)
-class CompanyAdmin(admin.ModelAdmin):
+class CompanyAdmin(CompanyAdminMixin, admin.ModelAdmin):
     form = CompanyForm
     list_display = [
         'id', 'logo_preview', 'name', 'credit_code', 'phone', 'status',
@@ -79,15 +79,6 @@ class CompanyAdmin(admin.ModelAdmin):
             'fields': ('status', 'created_at'),
         }),
     )
-
-    def _is_company_user(self, user):
-        return user.is_staff and user.company is not None
-
-    def has_module_permission(self, request):
-        return request.user.is_superuser or self._is_company_user(request.user)
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser or self._is_company_user(request.user)
 
     def has_add_permission(self, request):
         return request.user.is_superuser
@@ -152,7 +143,7 @@ class CompanyAdmin(admin.ModelAdmin):
 
 
 @admin.register(User)
-class UserAdmin(BaseUserAdmin):
+class UserAdmin(CompanyAdminMixin, BaseUserAdmin):
     list_display = [
         'username', 'company', 'role_display', 'phone', 'email', 'is_active', 'date_joined',
     ]
@@ -181,27 +172,8 @@ class UserAdmin(BaseUserAdmin):
         }),
     )
 
-    def _is_company_user(self, user):
-        return user.is_staff and user.company is not None
-
-    def has_module_permission(self, request):
-        return request.user.is_superuser or self._is_company_user(request.user)
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser or self._is_company_user(request.user)
-
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-
-    def has_change_permission(self, request, obj=None):
-        if request.user.is_superuser:
-            return True
-        if obj is not None:
-            return obj == request.user
-        return False
-
     def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
+        return request.user.is_superuser;
 
     def role_display(self, obj):
         return obj.get_role_display()
