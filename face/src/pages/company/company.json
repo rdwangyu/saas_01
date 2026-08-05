@@ -1,8 +1,7 @@
 {
-  "navigationBarTitleText": "案例",
+  "navigationBarTitleText": "公司简介",
   "enablePullDownRefresh": true,
   "backgroundTextStyle": "dark",
-  "onReachBottomDistance": 100,
   "usingComponents": {
     "empty": "/components/empty/empty"
   }

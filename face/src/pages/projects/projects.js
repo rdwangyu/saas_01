@@ -1,5 +1,5 @@
 const { request } = require('../../utils/request')
-const { absUrl, formatDate, formatBudget } = require('../../utils/util')
+const { formatDate } = require('../../utils/util')
 
 const PAGE_SIZE = 10
 
@@ -31,11 +31,9 @@ Page({
     const page = reset ? 1 : this.data.page + 1
     this.setData({ loading: true, error: '' })
     try {
-      const data = await request(`/cases/?page=${page}&page_size=${PAGE_SIZE}`)
+      const data = await request(`/projects/?page=${page}&page_size=${PAGE_SIZE}`)
       const items = (data.results || []).map((item) => ({
         ...item,
-        cover: absUrl(item.cover),
-        budgetText: formatBudget(item.budget),
         createdText: formatDate(item.created_at),
       }))
       this.setData({
@@ -55,6 +53,6 @@ Page({
 
   goDetail(e) {
     const id = e.currentTarget.dataset.id
-    wx.navigateTo({ url: `/pages/case-detail/case-detail?id=${id}` })
+    wx.navigateTo({ url: `/pages/project-detail/project-detail?id=${id}` })
   },
 })

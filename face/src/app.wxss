@@ -1,23 +1,180 @@
-/** 全局样式 **/
+/**app.wxss - 全局样式**/
 page {
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
-  line-height: 1.6;
+  background: #f5f7fa;
+  color: #1f2937;
   font-size: 28rpx;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 
-/* 通用 */
+/* 卡片 */
+.card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin: 20rpx 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(31, 41, 55, 0.05);
+}
+
+/* 主按钮 */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: #3a7bfd;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 500;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+.btn-primary::after {
+  border: none;
+}
+.btn-primary[disabled] {
+  opacity: 0.6;
+  color: #ffffff;
+  background: #3a7bfd;
+}
+.btn-block {
+  width: 100%;
+}
+
+/* 小标签 chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6rpx 18rpx;
+  border-radius: 999rpx;
+  background: #eff4ff;
+  color: #3a7bfd;
+  font-size: 22rpx;
+  margin-right: 12rpx;
+  margin-bottom: 8rpx;
+}
+.chip-gray {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+/* 区块标题 */
 .section-title {
-  font-size: 36rpx;
-  font-weight: 700;
-  display: block;
-  margin-bottom: 6rpx;
+  display: flex;
+  align-items: center;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 32rpx 24rpx 8rpx;
 }
-.section-sub {
-  font-size: 26rpx;
-  color: #888;
-  display: block;
-  margin-bottom: 36rpx;
+.section-title::before {
+  content: '';
+  width: 8rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: #3a7bfd;
+  margin-right: 14rpx;
 }
-.highlight { color: #4a90d9; }
+
+/* 信息行 */
+.info-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+}
+.info-row + .info-row {
+  border-top: 1rpx solid #f3f4f6;
+}
+.info-label {
+  width: 160rpx;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+.info-value {
+  flex: 1;
+  color: #1f2937;
+  word-break: break-all;
+}
+.info-value.link {
+  color: #3a7bfd;
+}
+
+/* 正文描述（保留换行） */
+.desc-text {
+  color: #374151;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.desc-empty {
+  color: #9ca3af;
+}
+
+/* 加载/没有更多提示 */
+.load-more {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 24rpx;
+  padding: 24rpx 0 40rpx;
+}
+
+/* 弹窗 */
+.modal-mask {
+  position: fixed;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(17, 24, 39, 0.5);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal {
+  width: 600rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 40rpx 36rpx 32rpx;
+  box-sizing: border-box;
+}
+.modal-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 32rpx;
+}
+.modal-input {
+  height: 84rpx;
+  background: #f5f7fa;
+  border-radius: 12rpx;
+  padding: 0 24rpx;
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+}
+.modal-btns {
+  display: flex;
+  margin-top: 24rpx;
+}
+.modal-btn {
+  flex: 1;
+  height: 80rpx;
+  line-height: 80rpx;
+  text-align: center;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+  background: #f3f4f6;
+  color: #374151;
+  margin: 0 10rpx;
+  padding: 0;
+}
+.modal-btn::after {
+  border: none;
+}
+.modal-btn-primary {
+  background: #3a7bfd;
+  color: #ffffff;
+}

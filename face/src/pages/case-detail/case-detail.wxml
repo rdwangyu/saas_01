@@ -1,0 +1,55 @@
+<view class="page" wx:if="{{detail}}">
+  <!-- 图片轮播 -->
+  <swiper
+    wx:if="{{images.length}}"
+    class="detail-swiper"
+    indicator-dots
+    autoplay
+    circular
+    interval="4000"
+    duration="400"
+    indicator-active-color="#3a7bfd"
+  >
+    <swiper-item wx:for="{{images}}" wx:key="*this">
+      <image
+        class="swiper-img"
+        src="{{item}}"
+        mode="aspectFill"
+        data-current="{{item}}"
+        bindtap="previewImage"
+      />
+    </swiper-item>
+  </swiper>
+  <view wx:else class="detail-swiper detail-swiper-empty">
+    <text>暂无图片</text>
+  </view>
+
+  <!-- 标题与信息 -->
+  <view class="detail-body">
+    <view class="detail-title">{{detail.title}}</view>
+    <view class="detail-chips">
+      <text class="chip" wx:if="{{detail.style}}">{{detail.style}}</text>
+      <text class="chip" wx:if="{{detail.area}}">{{detail.area}}㎡</text>
+      <text class="chip" wx:if="{{detail.budgetText}}">预算 {{detail.budgetText}}</text>
+      <text class="chip chip-gray" wx:if="{{detail.createdText}}">{{detail.createdText}}</text>
+    </view>
+
+    <!-- 视频 -->
+    <video
+      wx:if="{{detail.video}}"
+      class="detail-video"
+      src="{{detail.video}}"
+      controls
+      show-center-play-btn
+      object-fit="contain"
+    />
+
+    <!-- 描述 -->
+    <view class="section-title">案例详情</view>
+    <view class="card">
+      <text class="desc-text" user-select>{{detail.description || '暂无案例描述'}}</text>
+    </view>
+  </view>
+</view>
+
+<empty wx:elif="{{error}}" text="{{error}}" icon="⚠️" showAction="{{true}}" actionText="返回" bind:action="goBack" />

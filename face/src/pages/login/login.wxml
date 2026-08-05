@@ -1,0 +1,44 @@
+<view class="login-page">
+  <view class="brand">
+    <view class="brand-logo">云</view>
+    <view class="brand-name">云序效果图</view>
+    <view class="brand-desc">装饰公司数字化管理平台</view>
+  </view>
+
+  <view class="login-card">
+    <view class="field">
+      <view class="field-label">用户名</view>
+      <input
+        class="field-input"
+        placeholder="请输入用户名"
+        placeholder-class="field-placeholder"
+        value="{{username}}"
+        data-field="username"
+        bindinput="onInput"
+      />
+    </view>
+    <view class="field">
+      <view class="field-label">密码</view>
+      <input
+        class="field-input"
+        password
+        placeholder="请输入密码"
+        placeholder-class="field-placeholder"
+        value="{{password}}"
+        data-field="password"
+        bindinput="onInput"
+        confirm-type="done"
+        bindconfirm="onLogin"
+      />
+    </view>
+    <button
+      class="btn-primary btn-block login-btn"
+      loading="{{loading}}"
+      disabled="{{loading}}"
+      bindtap="onLogin"
+    >
+      登 录
+    </button>
+    <view class="login-tip">登录后可使用公司简介、案例、项目进度、用户管理等功能</view>
+  </view>
+</view>

@@ -1,10 +1,9 @@
 {
   "description": "项目私有配置文件",
-  "projectname": "%E4%BA%91%E5%BA%8F%E9%80%9A",
+  "projectname": "saas_face",
   "setting": {
     "compileHotReLoad": true,
     "urlCheck": false,
-    "skylineRenderEnable": true,
     "coverView": true,
     "lazyloadPlaceholderEnable": false,
     "preloadBackgroundData": false,

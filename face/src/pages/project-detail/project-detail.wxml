@@ -1,0 +1,69 @@
+<view class="page" wx:if="{{detail}}">
+  <!-- 项目概要 -->
+  <view class="card head-card">
+    <view class="head-name">{{detail.project_name}}</view>
+    <view class="head-stage">
+      当前进度：
+      <text class="head-stage-strong">{{detail.current_stage_name || '未开始'}}</text>
+    </view>
+  </view>
+
+  <!-- 项目信息 -->
+  <view class="card">
+    <view class="info-row">
+      <view class="info-label">所属公司</view>
+      <view class="info-value">{{detail.company_name}}</view>
+    </view>
+    <view class="info-row">
+      <view class="info-label">客户姓名</view>
+      <view class="info-value">{{detail.customer_name}}</view>
+    </view>
+    <view class="info-row" bindtap="callPhone" data-phone="{{detail.phone}}">
+      <view class="info-label">客户电话</view>
+      <view class="info-value link">📞 {{detail.phone}}</view>
+    </view>
+    <view class="info-row">
+      <view class="info-label">项目地址</view>
+      <view class="info-value">{{detail.address}}</view>
+    </view>
+    <view class="info-row">
+      <view class="info-label">创建时间</view>
+      <view class="info-value">{{detail.createdText}}</view>
+    </view>
+  </view>
+
+  <!-- 阶段时间线 -->
+  <view class="section-title">项目阶段（{{detail.stages.length}}）</view>
+
+  <view class="timeline" wx:if="{{detail.stages.length}}">
+    <view class="tl-item" wx:for="{{detail.stages}}" wx:key="id" wx:for-index="stageIdx">
+      <view class="tl-left">
+        <view class="tl-dot"></view>
+        <view class="tl-line" wx:if="{{stageIdx < detail.stages.length - 1}}"></view>
+      </view>
+      <view class="tl-content card">
+        <view class="tl-name">{{item.name || '阶段 ' + (stageIdx + 1)}}</view>
+        <view class="tl-desc" wx:if="{{item.description}}">{{item.description}}</view>
+        <view class="tl-imgs" wx:if="{{item.images.length}}">
+          <image
+            class="tl-img"
+            wx:for="{{item.images}}"
+            wx:for-item="img"
+            wx:key="*this"
+            src="{{img}}"
+            mode="aspectFill"
+            lazy-load
+            data-index="{{stageIdx}}"
+            data-img="{{img}}"
+            bindtap="previewStage"
+          />
+        </view>
+        <view class="tl-time">{{item.updatedText}}</view>
+      </view>
+    </view>
+  </view>
+
+  <empty wx:else text="该项目暂无阶段记录" icon="🗓" />
+</view>
+
+<empty wx:elif="{{error}}" text="{{error}}" icon="⚠️" showAction="{{true}}" actionText="返回" bind:action="goBack" />

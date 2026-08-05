@@ -28,7 +28,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id', 'username', 'email', 'company', 'company_name',
+            'id', 'username', 'email', 'password', 'company', 'company_name',
             'role', 'role_display', 'is_active', 'date_joined',
         ]
         read_only_fields = ['id', 'date_joined']
@@ -39,6 +39,15 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        """更新时对密码进行哈希，避免明文入库导致无法登录"""
+        password = validated_data.pop('password', None)
+        user = super().update(instance, validated_data)
         if password:
             user.set_password(password)
             user.save()

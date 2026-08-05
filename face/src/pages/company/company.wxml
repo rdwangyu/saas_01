@@ -1,0 +1,58 @@
+<view class="page">
+  <!-- 加载失败 -->
+  <empty
+    wx:if="{{error && !company}}"
+    text="{{error}}"
+    icon="⚠️"
+    showAction="{{true}}"
+    actionText="重新加载"
+    bind:action="loadCompany"
+  />
+
+  <!-- 加载中 -->
+  <view wx:elif="{{loading && !company}}" class="page-loading">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 暂无公司 -->
+  <empty wx:elif="{{!company}}" text="暂无公司信息，请先在后台添加" icon="🏢" />
+
+  <block wx:else>
+    <!-- 头部 -->
+    <view class="hero">
+      <image wx:if="{{company.logo}}" class="hero-logo" src="{{company.logo}}" mode="aspectFill" />
+      <view wx:else class="hero-logo hero-logo-text">{{company.logoText}}</view>
+      <view class="hero-name">{{company.name}}</view>
+      <view class="hero-status {{company.active ? 'hero-status-on' : ''}}">
+        {{company.active ? '营业中' : '已停用'}}
+      </view>
+    </view>
+
+    <!-- 联系方式 -->
+    <view class="card">
+      <view class="info-row" wx:if="{{company.phone}}" bindtap="callPhone" data-phone="{{company.phone}}">
+        <view class="info-label">联系电话</view>
+        <view class="info-value link">📞 {{company.phone}}</view>
+      </view>
+      <view class="info-row" wx:if="{{company.address}}">
+        <view class="info-label">公司地址</view>
+        <view class="info-value">{{company.address}}</view>
+      </view>
+      <view class="info-row" wx:if="{{company.credit_code}}">
+        <view class="info-label">信用代码</view>
+        <view class="info-value">{{company.credit_code}}</view>
+      </view>
+      <view class="info-row" wx:if="{{company.createdText}}">
+        <view class="info-label">创建时间</view>
+        <view class="info-value">{{company.createdText}}</view>
+      </view>
+    </view>
+
+    <!-- 公司简介 -->
+    <view class="section-title">公司简介</view>
+    <view class="card desc-card">
+      <text class="desc-text" wx:if="{{company.description}}" user-select>{{company.description}}</text>
+      <text class="desc-empty" wx:else>暂无简介内容</text>
+    </view>
+  </block>
+</view>

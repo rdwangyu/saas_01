@@ -1,0 +1,74 @@
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #3a7bfd 0%, #5b8def 45%, #f5f7fa 45.1%);
+  padding: 0 48rpx;
+  box-sizing: border-box;
+}
+
+.brand {
+  padding: 140rpx 0 80rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.brand-logo {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 32rpx;
+  background: #ffffff;
+  color: #3a7bfd;
+  font-size: 64rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(255, 255, 255, 0.35);
+  margin-bottom: 28rpx;
+}
+.brand-name {
+  color: #ffffff;
+  font-size: 40rpx;
+  font-weight: 600;
+  letter-spacing: 4rpx;
+}
+.brand-desc {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 24rpx;
+  margin-top: 12rpx;
+}
+
+.login-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  padding: 48rpx 40rpx 40rpx;
+  box-shadow: 0 12rpx 40rpx rgba(31, 41, 55, 0.08);
+}
+
+.field {
+  margin-bottom: 32rpx;
+}
+.field-label {
+  font-size: 26rpx;
+  color: #6b7280;
+  margin-bottom: 12rpx;
+}
+.field-input {
+  height: 88rpx;
+  background: #f5f7fa;
+  border-radius: 16rpx;
+  padding: 0 28rpx;
+  font-size: 30rpx;
+}
+.field-placeholder {
+  color: #c0c6cf;
+}
+
+.login-btn {
+  margin-top: 12rpx;
+}
+.login-tip {
+  margin-top: 28rpx;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 22rpx;
+}

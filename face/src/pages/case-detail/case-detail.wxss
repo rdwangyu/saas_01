@@ -1,0 +1,38 @@
+.detail-swiper {
+  width: 100%;
+  height: 480rpx;
+  background: #eef1f5;
+}
+.swiper-img {
+  width: 100%;
+  height: 480rpx;
+}
+.detail-swiper-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b6bcc6;
+  font-size: 26rpx;
+}
+
+.detail-body {
+  padding: 0 0 40rpx;
+}
+.detail-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 28rpx 24rpx 16rpx;
+}
+.detail-chips {
+  margin: 0 24rpx 8rpx;
+}
+
+.detail-video {
+  width: 702rpx;
+  height: 396rpx;
+  margin: 24rpx 24rpx 0;
+  border-radius: 16rpx;
+  overflow: hidden;
+  background: #000000;
+}

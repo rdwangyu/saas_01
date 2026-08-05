@@ -1,0 +1,64 @@
+.project-list {
+  padding: 20rpx 24rpx 0;
+}
+
+.project-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(31, 41, 55, 0.05);
+}
+.project-card-hover {
+  opacity: 0.85;
+}
+
+.project-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+.project-name {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-right: 16rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stage-badge {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  color: #3a7bfd;
+  background: #eff4ff;
+  padding: 6rpx 20rpx;
+  border-radius: 999rpx;
+}
+.stage-badge-muted {
+  color: #9ca3af;
+  background: #f3f4f6;
+}
+
+.project-meta {
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.7;
+}
+.project-address {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-foot {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+  border-top: 1rpx solid #f3f4f6;
+  font-size: 22rpx;
+  color: #9ca3af;
+}
