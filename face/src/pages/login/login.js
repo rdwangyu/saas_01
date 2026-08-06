@@ -1,40 +1,78 @@
-const { request, setTokens } = require('../../utils/request')
+const { request, setCustomerToken } = require('../../utils/request')
 
 Page({
   data: {
-    username: '',
-    password: '',
+    phone: '',
+    code: '',
     loading: false,
+    sending: false,
+    countdown: 0,
   },
 
   onInput(e) {
-    const field = e.currentTarget.dataset.field
-    this.setData({ [field]: e.detail.value })
+    this.setData({ [e.currentTarget.dataset.field]: e.detail.value })
   },
 
-  async onLogin() {
-    const { username, password } = this.data
-    if (!username.trim()) {
-      wx.showToast({ title: '请输入用户名', icon: 'none' })
+  onUnload() {
+    if (this._timer) clearInterval(this._timer)
+  },
+
+  /** 发送验证码 */
+  async onSendCode() {
+    const phone = this.data.phone.trim()
+    if (!/^1\d{10}$/.test(phone)) {
+      wx.showToast({ title: '请输入正确的手机号', icon: 'none' })
       return
     }
-    if (!password) {
-      wx.showToast({ title: '请输入密码', icon: 'none' })
+    this.setData({ sending: true })
+    try {
+      await request('/customer/send-code/', { method: 'POST', data: { phone } })
+      wx.showToast({ title: '验证码已发送', icon: 'success' })
+      this.startCountdown()
+    } catch (err) {
+      wx.showToast({ title: err.message || '发送失败', icon: 'none' })
+    } finally {
+      this.setData({ sending: false })
+    }
+  },
+
+  startCountdown() {
+    let n = 60
+    this.setData({ countdown: n })
+    this._timer = setInterval(() => {
+      n -= 1
+      if (n <= 0) {
+        clearInterval(this._timer)
+        this.setData({ countdown: 0 })
+      } else {
+        this.setData({ countdown: n })
+      }
+    }, 1000)
+  },
+
+  /** 手机号 + 验证码 登录 */
+  async onLogin() {
+    const phone = this.data.phone.trim()
+    const code = this.data.code.trim()
+    if (!/^1\d{10}$/.test(phone)) {
+      wx.showToast({ title: '请输入正确的手机号', icon: 'none' })
+      return
+    }
+    if (!code) {
+      wx.showToast({ title: '请输入验证码', icon: 'none' })
       return
     }
     this.setData({ loading: true })
     try {
-      const data = await request('/auth/login/', {
+      const data = await request('/customer/login/', {
         method: 'POST',
-        data: { username: username.trim(), password },
+        data: { phone, code },
       })
-      setTokens(data.access, data.refresh)
-      const me = await request('/me/')
-      getApp().globalData.userInfo = me
+      setCustomerToken(data.token)
+      getApp().globalData.userInfo = data.customer
       wx.showToast({ title: '登录成功', icon: 'success' })
-      setTimeout(() => {
-        wx.switchTab({ url: '/pages/company/company' })
-      }, 500)
+      const target = getApp().globalData.afterLogin || '/pages/projects/projects'
+      setTimeout(() => wx.switchTab({ url: target }), 400)
     } catch (err) {
       wx.showToast({ title: err.message || '登录失败', icon: 'none' })
     } finally {

@@ -1,3 +1,5 @@
+/* 统一使用全局蓝色主题（见 app.wxss） */
+
 .case-grid {
   display: flex;
   flex-wrap: wrap;

@@ -1,3 +1,5 @@
+/* 统一使用全局蓝色主题（见 app.wxss） */
+
 .project-list {
   padding: 20rpx 24rpx 0;
 }
@@ -32,8 +34,8 @@
 .stage-badge {
   flex-shrink: 0;
   font-size: 22rpx;
-  color: #3a7bfd;
-  background: #eff4ff;
+  color: var(--primary, #3a7bfd);
+  background: var(--primary-soft, #eff4ff);
   padding: 6rpx 20rpx;
   border-radius: 999rpx;
 }
@@ -55,7 +57,7 @@
 
 .project-foot {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 16rpx;
   padding-top: 16rpx;
   border-top: 1rpx solid #f3f4f6;

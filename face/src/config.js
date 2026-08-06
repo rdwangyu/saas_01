@@ -12,7 +12,7 @@
  */
 module.exports = {
   // Django 后端 API 根地址（对应 saas/urls.py 中的 /api/）
-  BASE_URL: 'http://192.168.10.107:8000/api',
+  BASE_URL: 'http://127.0.0.1:8000/api',
 
   // 媒体文件兜底域名（阿里云 OSS，settings.py 中 ALIYUN_OSS_BUCKET_DOMAIN）
   // 后端返回的图片/视频地址若为相对路径，会自动拼接该域名

@@ -1,12 +1,13 @@
 {
   "pages": [
-    "pages/login/login",
+    "pages/index/index",
     "pages/company/company",
     "pages/cases/cases",
     "pages/case-detail/case-detail",
     "pages/projects/projects",
     "pages/project-detail/project-detail",
-    "pages/users/users"
+    "pages/users/users",
+    "pages/login/login"
   ],
   "window": {
     "navigationBarTitleText": "云序效果图",
@@ -43,7 +44,7 @@
         "pagePath": "pages/users/users",
         "iconPath": "images/tabbar/user.png",
         "selectedIconPath": "images/tabbar/user-active.png",
-        "text": "用户管理"
+        "text": "我的"
       }
     ]
   },

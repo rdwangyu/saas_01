@@ -1,16 +1,32 @@
 /**
  * 网络请求封装
- * - 自动携带 JWT access token
- * - 401 时自动用 refresh token 刷新并重试一次
- * - 刷新失败则清除登录态并跳转登录页
+ * - 客户（手机号+验证码）登录后使用 customer_token，Bearer 携带
+ * - 公开接口（公司/案例）免登录，不携带 token
+ * - 客户 token 失效时不自动刷新，由页面提示“请先登录”
+ * - 保留旧的员工 JWT 刷新逻辑（兼容历史数据，小程序已不再使用员工登录）
  */
 const { BASE_URL } = require('../config')
 
 const TOKEN_KEY = 'access_token'
 const REFRESH_KEY = 'refresh_token'
+const CUSTOMER_TOKEN_KEY = 'customer_token'
 
+/* ---------- 客户 token ---------- */
+function getCustomerToken() {
+  return wx.getStorageSync(CUSTOMER_TOKEN_KEY) || ''
+}
+
+function setCustomerToken(token) {
+  wx.setStorageSync(CUSTOMER_TOKEN_KEY, token)
+}
+
+function clearCustomerToken() {
+  wx.removeStorageSync(CUSTOMER_TOKEN_KEY)
+}
+
+/* ---------- 旧员工 JWT（兼容保留） ---------- */
 function getToken() {
-  return wx.getStorageSync(TOKEN_KEY) || ''
+  return getCustomerToken() || wx.getStorageSync(TOKEN_KEY) || ''
 }
 
 function getRefreshToken() {
@@ -72,7 +88,7 @@ function rawRequest(url, method, data) {
   })
 }
 
-/** 用 refresh token 换取新的 access token */
+/** 用 refresh token 换取新的 access token（旧员工 JWT，保留） */
 function refreshAccessToken() {
   const refresh = getRefreshToken()
   if (!refresh) return Promise.reject(new Error('未登录'))
@@ -97,26 +113,25 @@ function refreshAccessToken() {
   })
 }
 
-/** 跳转登录页并清除登录态 */
-function toLogin() {
-  clearTokens()
-  wx.reLaunch({ url: '/pages/login/login' })
-}
-
 /**
  * 统一请求入口
- * @param {string} url 接口路径，如 '/cases/'
+ * @param {string} url 接口路径，如 '/public/cases/'
  * @param {object} options { method, data, retried }
  */
 function request(url, options = {}) {
   const { method = 'GET', data = {}, retried = false } = options
   return rawRequest(url, method, data).catch((err) => {
+    // 客户 token：失效即清除登录态，由页面展示“请先登录”（不跳登录页、不刷新）
+    if (err.statusCode === 401 && getCustomerToken() && !retried) {
+      clearCustomerToken()
+      getApp().globalData.userInfo = null
+    }
+    // 旧员工 JWT：保留 401 自动刷新逻辑
     if (err.statusCode === 401 && getRefreshToken() && !retried) {
       return refreshAccessToken().then(
         () => request(url, { method, data, retried: true }),
         () => {
-          // 仅刷新失败时清除登录态并跳转登录页
-          toLogin()
+          clearTokens()
           throw new Error('登录已过期，请重新登录')
         }
       )
@@ -129,6 +144,9 @@ module.exports = {
   request,
   getToken,
   getRefreshToken,
+  getCustomerToken,
+  setCustomerToken,
+  clearCustomerToken,
   setTokens,
   clearTokens,
   extractError,

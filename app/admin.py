@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from .models import (
-    Company, User, Case, ProjectProgress, ProjectStage, CommonStatus,
+    Company, Customer, User, Case, ProjectProgress, ProjectStage, CommonStatus,
 )
 from .permissions import CompanyAdminMixin
 
@@ -70,6 +70,9 @@ class CompanyAdmin(CompanyAdminMixin, admin.ModelAdmin):
         }),
         ('联系方式', {
             'fields': ('phone', 'address'),
+        }),
+        ('成立日期', {
+            'fields': ('established_date',),
         }),
         ('视频限制', {
             'fields': ('max_video_size',),
@@ -136,6 +139,47 @@ class CompanyAdmin(CompanyAdminMixin, admin.ModelAdmin):
     def case_count(self, obj):
         return obj.cases.count()
     case_count.short_description = '案例数'
+
+    def project_count(self, obj):
+        return obj.projects.count()
+    project_count.short_description = '项目数'
+
+
+@admin.register(Customer)
+class CustomerAdmin(CompanyAdminMixin, admin.ModelAdmin):
+    """客户表：全局表，仅超级管理员可增删改，公司管理员只读。"""
+    list_display = ['id', 'name', 'phone', 'address', 'company_names', 'project_count', 'created_at']
+    list_display_links = ['id', 'name']
+    search_fields = ['name', 'phone', 'address']
+    readonly_fields = ['created_at']
+
+    fieldsets = (
+        ('基本信息', {
+            'fields': ('name', 'phone', 'address'),
+        }),
+        ('时间', {
+            'fields': ('created_at',),
+        }),
+    )
+
+    # 仅超级管理员可增删改；公司管理员继承 CompanyAdminMixin 的只读查看权限
+    def has_add_permission(self, request):
+        return request.user.is_superuser
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser
+
+    def company_names(self, obj):
+        """客户与公司的关系通过项目体现，列出其项目所在公司。"""
+        names = set()
+        for p in obj.projects.select_related('company'):
+            if p.company:
+                names.add(p.company.name)
+        return '、'.join(sorted(names)) or '—'
+    company_names.short_description = '所属公司（按项目）'
 
     def project_count(self, obj):
         return obj.projects.count()
@@ -328,24 +372,37 @@ class ProjectStageInline(admin.StackedInline):
 @admin.register(ProjectProgress)
 class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
     list_display = [
-        'id', 'project_name', 'customer_name', 'stage_display', 'company',
-        'phone', 'status', 'created_at',
+        'id', 'project_name', 'customer', 'staff', 'stage_display', 'company',
+        'status', 'created_at',
     ]
     list_display_links = ['id', 'project_name']
     list_filter = ['company', 'created_at']
-    search_fields = ['project_name', 'customer_name', 'phone', 'address', 'company__name']
+    search_fields = ['project_name', 'address', 'company__name',
+                     'customer__name', 'customer__phone', 'staff__username']
     readonly_fields = ['created_at']
     inlines = [ProjectStageInline]
     date_hierarchy = 'created_at'
 
     fieldsets = (
         ('基本信息', {
-            'fields': ('company', 'project_name', 'customer_name', 'phone', 'address'),
+            'fields': ('company', 'project_name', 'address'),
+        }),
+        ('客户与负责人', {
+            'fields': ('customer', 'staff'),
         }),
         ('状态', {
             'fields': ('status', 'created_at'),
         })
     )
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        if db_field.name == 'customer':
+            # 客户为全局表（仅超管可维护），公司管理员只读，下拉展示全部客户
+            kwargs['queryset'] = Customer.objects.all()
+        elif db_field.name == 'staff' and not request.user.is_superuser:
+            # 负责人（员工）属于本公司，仅本公司员工可选
+            kwargs['queryset'] = User.objects.filter(company=request.user.company)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request).select_related('company').prefetch_related('stages')
@@ -379,6 +436,8 @@ class ProjectProgressAdmin(CompanyAdminMixin, admin.ModelAdmin):
         return form
 
     def save_model(self, request, obj, form, change):
+        if not request.user.is_superuser:
+            obj.company = request.user.company
         obj.save()
 
     def stage_display(self, obj):

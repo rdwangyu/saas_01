@@ -1,118 +1,45 @@
 <view class="page">
-  <!-- 当前用户卡片 -->
-  <view class="me-card" wx:if="{{me}}">
-    <view class="me-avatar">{{me.initial}}</view>
-    <view class="me-info">
-      <view class="me-name">
-        {{me.username}}
-        <text class="me-role">{{me.role_display || '公司管理员'}}</text>
-      </view>
-      <view class="me-sub">{{me.company_name || '未分配公司'}} · {{me.email || '未绑定邮箱'}}</view>
-    </view>
-  </view>
-  <view class="me-actions">
-    <button class="btn-mini" bindtap="openPwdModal">修改密码</button>
-    <button class="btn-mini btn-mini-danger" bindtap="onLogout">退出登录</button>
+  <!-- 未登录引导 -->
+  <view wx:if="{{needLogin}}" class="login-gate">
+    <view class="login-gate-icon">🔐</view>
+    <view class="login-gate-title">请先登录</view>
+    <view class="login-gate-desc">登录后即可查看我的信息</view>
+    <button class="login-gate-btn" bindtap="goLogin">登录</button>
+    <button class="login-gate-secondary" bindtap="switchCompany">切换公司</button>
   </view>
 
-  <!-- 用户列表 -->
-  <view class="list-head">
-    <view class="section-title list-title">用户列表（{{total}}）</view>
-    <button class="btn-add" bindtap="openAddModal">＋ 新增用户</button>
-  </view>
-
-  <view class="user-row" wx:for="{{list}}" wx:key="id">
-    <view class="user-avatar">{{item.initial}}</view>
-    <view class="user-info">
-      <view class="user-name">
-        {{item.username}}
-        <text class="user-badge" wx:if="{{me && item.id === me.id}}">我</text>
-        <text class="user-badge user-badge-off" wx:if="{{!item.is_active}}">停用</text>
-      </view>
-      <view class="user-sub">{{item.role_display || '公司管理员'}} · {{item.email || '未绑定邮箱'}}</view>
-    </view>
-    <view class="user-right">
-      <view class="status-dot {{item.is_active ? 'status-on' : 'status-off'}}"></view>
-      <button
-        wx:if="{{me && item.id !== me.id}}"
-        class="btn-del"
-        data-id="{{item.id}}"
-        catchtap="onDelete"
-      >
-        删除
-      </button>
-    </view>
-  </view>
-
-  <view class="load-more" wx:if="{{list.length}}">
-    <text wx:if="{{loading}}">加载中...</text>
-    <text wx:elif="{{!hasMore}}">没有更多了</text>
-    <text wx:else>上拉加载更多</text>
-  </view>
-
-  <empty wx:if="{{!list.length && !loading}}" text="暂无用户，点击右上角新增" icon="👤" />
-
-  <!-- 新增用户弹窗 -->
-  <view class="modal-mask" wx:if="{{showAdd}}" catchtouchmove="noop">
-    <view class="modal">
-      <view class="modal-title">新增用户</view>
-      <input
-        class="modal-input"
-        placeholder="用户名（必填）"
-        value="{{form.username}}"
-        data-field="username"
-        bindinput="onFormInput"
-      />
-      <input
-        class="modal-input"
-        placeholder="邮箱（选填）"
-        value="{{form.email}}"
-        data-field="email"
-        bindinput="onFormInput"
-      />
-      <input
-        class="modal-input"
-        password
-        placeholder="初始密码（必填）"
-        value="{{form.password}}"
-        data-field="password"
-        bindinput="onFormInput"
-      />
-      <view class="modal-btns">
-        <button class="modal-btn" bindtap="closeAddModal">取消</button>
-        <button class="modal-btn modal-btn-primary" loading="{{submitting}}" bindtap="submitAdd">
-          确定
-        </button>
+  <block wx:elif="{{me}}">
+    <!-- 客户信息卡片 -->
+    <view class="me-card">
+      <view class="me-avatar">{{me.initial}}</view>
+      <view class="me-info">
+        <view class="me-name">{{me.name}}</view>
       </view>
     </view>
-  </view>
 
-  <!-- 修改密码弹窗 -->
-  <view class="modal-mask" wx:if="{{showPwd}}" catchtouchmove="noop">
-    <view class="modal">
-      <view class="modal-title">修改密码</view>
-      <input
-        class="modal-input"
-        password
-        placeholder="新密码（至少 6 位）"
-        value="{{pwdForm.password}}"
-        data-field="password"
-        bindinput="onPwdInput"
-      />
-      <input
-        class="modal-input"
-        password
-        placeholder="再次输入新密码"
-        value="{{pwdForm.confirm}}"
-        data-field="confirm"
-        bindinput="onPwdInput"
-      />
-      <view class="modal-btns">
-        <button class="modal-btn" bindtap="closePwdModal">取消</button>
-        <button class="modal-btn modal-btn-primary" loading="{{submitting}}" bindtap="submitPwd">
-          确定
-        </button>
+    <view class="card">
+      <view class="info-row">
+        <view class="info-label">手机号</view>
+        <view class="info-value">{{me.phone}}</view>
+      </view>
+      <view class="info-row">
+        <view class="info-label">地址</view>
+        <view class="info-value">{{me.address || '未填写'}}</view>
       </view>
     </view>
-  </view>
+
+    <!-- 项目合同占位 -->
+    <view class="section-title">项目合同</view>
+    <view class="card contract-card">
+      <view class="contract-icon">📄</view>
+      <view class="contract-text">暂无合同</view>
+      <view class="contract-sub">合同功能建设中，敬请期待</view>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="me-btns">
+      <button class="btn-action btn-action-blue" bindtap="switchCompany">切换公司</button>
+      <button class="btn-action btn-action-danger" bindtap="onLogout">退出登录</button>
+    </view>
+  </block>
 </view>

@@ -1,4 +1,4 @@
-const { request } = require('../../utils/request')
+const { request, getCustomerToken } = require('../../utils/request')
 const { absUrl, formatDate, formatDateTime } = require('../../utils/util')
 
 Page({
@@ -6,16 +6,21 @@ Page({
     id: null,
     detail: null,
     error: '',
+    needLogin: false,
   },
 
   onLoad(options) {
     this.setData({ id: options.id })
+    if (!getCustomerToken()) {
+      this.setData({ needLogin: true })
+      return
+    }
     this.loadDetail()
   },
 
   async loadDetail() {
     try {
-      const detail = await request(`/projects/${this.data.id}/`)
+      const detail = await request(`/customer/projects/${this.data.id}/`)
       const stages = (detail.stages || []).map((stage) => ({
         ...stage,
         images: [stage.image_0, stage.image_1, stage.image_2]
@@ -38,6 +43,11 @@ Page({
 
   goBack() {
     wx.navigateBack()
+  },
+
+  goLogin() {
+    getApp().globalData.afterLogin = '/pages/projects/projects'
+    wx.navigateTo({ url: '/pages/login/login' })
   },
 
   callPhone(e) {

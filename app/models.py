@@ -67,6 +67,7 @@ class Company(models.Model):
         help_text='影响案例和项目进度的视频上传上限',
     )
     created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    established_date = models.DateField('成立日期', null=True, blank=True, help_text='公司成立日期')
 
     objects = SoftDeleteManager()
 
@@ -109,6 +110,35 @@ class Company(models.Model):
         return self.max_video_size
 
 
+class Customer(models.Model):
+    """客户：公司服务的人员，通过手机号+短信验证码登录小程序。
+
+    客户是全局表（仅超级管理员可维护），不直接归属某家公司，
+    公司与客户的关系通过「项目 → 客户」体现。
+    """
+    name = models.CharField('姓名', max_length=100)
+    phone = models.CharField('电话', max_length=30, unique=True)
+    address = models.CharField('住址', max_length=300, default='')
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+
+    class Meta:
+        verbose_name = '客户'
+        verbose_name_plural = '客户'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.name}（{self.phone}）'
+
+    @property
+    def is_authenticated(self):
+        # 客户由 CustomerAuthentication 认证，DRF 权限需要该属性
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
+
 class User(AbstractUser):
     class Role(models.TextChoices):
         ADMIN = 'admin', '公司管理员'
@@ -130,8 +160,9 @@ class User(AbstractUser):
     )
 
     class Meta:
-        verbose_name = '用户'
-        verbose_name_plural = verbose_name
+        db_table = 'app_staff'
+        verbose_name = '员工'
+        verbose_name_plural = '员工'
         ordering = ['company', 'username']
 
     def __str__(self):
@@ -272,9 +303,24 @@ class ProjectProgress(models.Model):
         related_name='projects',
         verbose_name='所属公司',
     )
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects',
+        verbose_name='客户',
+        help_text='客户信息由客户表提供',
+    )
+    staff = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='projects',
+        verbose_name='负责人',
+    )
     project_name = models.CharField('项目名称', max_length=200)
-    customer_name = models.CharField('客户姓名', max_length=100)
-    phone = models.CharField('客户电话', max_length=30)
     address = models.CharField('项目地址', max_length=300)
     status = models.CharField(
         '状态',
@@ -292,7 +338,8 @@ class ProjectProgress(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        name = self.project_name or self.customer_name
+        customer_name = self.customer.name if self.customer else ''
+        name = self.project_name or customer_name
         return f'[{self.company.name}] {name}'
 
     def delete(self, *args, **kwargs):
@@ -310,3 +357,39 @@ class ProjectProgress(models.Model):
             if stage.image_0 or stage.image_1 or stage.image_2 or stage.description:
                 last = stage
         return last.name if last is not None else '未开始'
+
+
+class SmsCode(models.Model):
+    """短信验证码：发送后暂存，校验成功后作废。"""
+    phone = models.CharField('手机号', max_length=30, db_index=True)
+    code = models.CharField('验证码', max_length=10)
+    created_at = models.DateTimeField('发送时间', auto_now_add=True)
+    used = models.BooleanField('已使用', default=False)
+
+    class Meta:
+        verbose_name = '短信验证码'
+        verbose_name_plural = '短信验证码'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.phone} - {self.code}'
+
+
+class CustomerToken(models.Model):
+    """客户登录令牌：手机号+验证码登录后签发，代替 JWT（客户不是 Django 用户）。"""
+    key = models.CharField('令牌', max_length=64, unique=True)
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='tokens',
+        verbose_name='客户',
+    )
+    created_at = models.DateTimeField('签发时间', auto_now_add=True)
+    expires_at = models.DateTimeField('过期时间')
+
+    class Meta:
+        verbose_name = '客户令牌'
+        verbose_name_plural = '客户令牌'
+
+    def __str__(self):
+        return f'{self.customer} - {self.key[:8]}...'

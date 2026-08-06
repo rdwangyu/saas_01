@@ -24,7 +24,7 @@ class CompanyAdminMixin:
         if request.user.is_superuser:
             return True
         if obj is not None:
-            return obj == request.user
+            return getattr(obj, 'company_id', None) == request.user.company_id
         return self._is_company_user(request.user)
 
     def has_delete_permission(self, request, obj=None):
@@ -35,6 +35,9 @@ class CompanyAdminMixin:
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         if request.user.is_superuser:
+            return qs
+        # Company 自身没有 company 字段，跳过按公司过滤（CompanyAdmin 已自行按 id 过滤）
+        if not hasattr(self.model, 'company'):
             return qs
         return qs.filter(company=request.user.company)
 

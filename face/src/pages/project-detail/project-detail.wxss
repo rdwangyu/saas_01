@@ -1,9 +1,11 @@
+/* 统一使用全局蓝色主题（见 app.wxss） */
+
 .head-card {
-  background: linear-gradient(135deg, #3a7bfd, #5b8def);
+  background: linear-gradient(135deg, var(--gradient-start, #3a7bfd), var(--gradient-end, #5b8def));
   border-radius: 20rpx;
   margin: 20rpx 24rpx;
   padding: 36rpx 32rpx;
-  box-shadow: 0 8rpx 24rpx rgba(58, 123, 253, 0.25);
+  box-shadow: 0 8rpx 24rpx var(--primary-shadow, rgba(58, 123, 253, 0.3));
 }
 .head-name {
   color: #ffffff;
@@ -39,15 +41,15 @@
   width: 20rpx;
   height: 20rpx;
   border-radius: 50%;
-  background: #3a7bfd;
-  border: 6rpx solid #dbe7ff;
+  background: var(--primary, #3a7bfd);
+  border: 6rpx solid var(--primary-border, #c7d9ff);
   box-sizing: content-box;
   flex-shrink: 0;
 }
 .tl-line {
   flex: 1;
   width: 4rpx;
-  background: #dbe7ff;
+  background: var(--primary-border, #c7d9ff);
   margin-top: 8rpx;
 }
 .tl-content {

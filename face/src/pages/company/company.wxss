@@ -1,3 +1,5 @@
+/* 统一使用全局蓝色主题（见 app.wxss） */
+
 .page-loading {
   padding: 200rpx 0;
   text-align: center;
@@ -5,36 +7,83 @@
   font-size: 26rpx;
 }
 
-/* 头部 */
+/* 公司主图（占位横幅：渐变 + 装饰圆，后续可替换为公司主图字段） */
 .hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 60rpx 40rpx 40rpx;
+  position: relative;
+  height: 320rpx;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--gradient-start, #3a7bfd) 0%, var(--gradient-end, #5b8def) 100%);
+  border-radius: 0 0 40rpx 40rpx;
 }
-.hero-logo {
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 32rpx;
-  background: #e5edff;
-  box-shadow: 0 8rpx 24rpx rgba(58, 123, 253, 0.18);
-  margin-bottom: 24rpx;
-}
-.hero-logo-text {
+.hero-inner {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #3a7bfd;
-  font-size: 72rpx;
+}
+.hero-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+.hero-circle-1 {
+  width: 360rpx;
+  height: 360rpx;
+  right: -120rpx;
+  top: -120rpx;
+}
+.hero-circle-2 {
+  width: 240rpx;
+  height: 240rpx;
+  left: -80rpx;
+  bottom: -100rpx;
+}
+.hero-slogan {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 30rpx;
+  letter-spacing: 6rpx;
+}
+
+/* logo + 名字并排一行 */
+.brand-row {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 32rpx 8rpx;
+}
+.brand-logo {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 20rpx;
+  background: var(--primary-soft, #eff4ff);
+  flex-shrink: 0;
+}
+.brand-logo-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary, #3a7bfd);
+  font-size: 44rpx;
   font-weight: 700;
 }
-.hero-name {
-  font-size: 40rpx;
+.brand-name-col {
+  margin-left: 24rpx;
+  min-width: 0;
+}
+.brand-name {
+  font-size: 36rpx;
   font-weight: 600;
   color: #1f2937;
+  line-height: 1.3;
+  word-break: break-all;
 }
 .hero-status {
-  margin-top: 12rpx;
+  display: inline-flex;
+  align-items: center;
+  margin-top: 10rpx;
   font-size: 22rpx;
   color: #9ca3af;
   background: #f3f4f6;
@@ -44,9 +93,4 @@
 .hero-status-on {
   color: #10b981;
   background: #ecfdf5;
-}
-
-/* 简介 */
-.desc-card {
-  padding: 32rpx;
 }

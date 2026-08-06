@@ -16,7 +16,7 @@ Page({
 
   async loadDetail() {
     try {
-      const detail = await request(`/cases/${this.data.id}/`)
+      const detail = await request(`/public/cases/${this.data.id}/`)
       const images = []
       if (detail.cover) images.push(absUrl(detail.cover))
       ;(detail.images || []).forEach((url) => {

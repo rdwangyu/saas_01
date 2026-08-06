@@ -10,9 +10,15 @@ Page({
     hasMore: true,
     loading: false,
     error: '',
+    noCompany: false,
   },
 
   onShow() {
+    if (!getApp().globalData.currentCompanyId) {
+      this.setData({ noCompany: true, list: [] })
+      return
+    }
+    this.setData({ noCompany: false })
     this.loadList(true)
   },
 
@@ -27,11 +33,13 @@ Page({
   },
 
   async loadList(reset) {
+    const companyId = getApp().globalData.currentCompanyId
+    if (!companyId) return
     if (this.data.loading) return
     const page = reset ? 1 : this.data.page + 1
     this.setData({ loading: true, error: '' })
     try {
-      const data = await request(`/cases/?page=${page}&page_size=${PAGE_SIZE}`)
+      const data = await request(`/public/cases/?company=${companyId}&page=${page}&page_size=${PAGE_SIZE}`)
       const items = (data.results || []).map((item) => ({
         ...item,
         cover: absUrl(item.cover),
@@ -56,5 +64,9 @@ Page({
   goDetail(e) {
     const id = e.currentTarget.dataset.id
     wx.navigateTo({ url: `/pages/case-detail/case-detail?id=${id}` })
+  },
+
+  goIndex() {
+    wx.reLaunch({ url: '/pages/index/index' })
   },
 })

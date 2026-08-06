@@ -1,5 +1,21 @@
 /**app.wxss - 全局样式**/
+/**
+ * 主题色变量：全小程序统一使用蓝色主色（#3a7bfd），
+ * 各页面不再覆盖 page{} 换色，组件统一引用这里的变量与样式。
+ */
 page {
+  /* 主色（按钮/链接/高亮/头像） */
+  --primary: #3a7bfd;
+  /* 渐变两端（头部横幅/主按钮/登录门） */
+  --gradient-start: #3a7bfd;
+  --gradient-end: #5b8def;
+  /* 浅色底（chip 药丸/头像底/徽章底） */
+  --primary-soft: #eff4ff;
+  /* 浅边框（描边按钮/时间线圆环） */
+  --primary-border: #c7d9ff;
+  /* 投影色 */
+  --primary-shadow: rgba(58, 123, 253, 0.3);
+
   background: #f5f7fa;
   color: #1f2937;
   font-size: 28rpx;
@@ -17,29 +33,6 @@ page {
   box-shadow: 0 4rpx 16rpx rgba(31, 41, 55, 0.05);
 }
 
-/* 主按钮 */
-.btn-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 88rpx;
-  border-radius: 44rpx;
-  background: #3a7bfd;
-  color: #ffffff;
-  font-size: 32rpx;
-  font-weight: 500;
-  border: none;
-  padding: 0;
-  line-height: 1;
-}
-.btn-primary::after {
-  border: none;
-}
-.btn-primary[disabled] {
-  opacity: 0.6;
-  color: #ffffff;
-  background: #3a7bfd;
-}
 .btn-block {
   width: 100%;
 }
@@ -50,8 +43,8 @@ page {
   align-items: center;
   padding: 6rpx 18rpx;
   border-radius: 999rpx;
-  background: #eff4ff;
-  color: #3a7bfd;
+  background: var(--primary-soft, #eff4ff);
+  color: var(--primary, #3a7bfd);
   font-size: 22rpx;
   margin-right: 12rpx;
   margin-bottom: 8rpx;
@@ -75,7 +68,7 @@ page {
   width: 8rpx;
   height: 28rpx;
   border-radius: 4rpx;
-  background: #3a7bfd;
+  background: var(--primary, #3a7bfd);
   margin-right: 14rpx;
 }
 
@@ -100,7 +93,7 @@ page {
   word-break: break-all;
 }
 .info-value.link {
-  color: #3a7bfd;
+  color: var(--primary, #3a7bfd);
 }
 
 /* 正文描述（保留换行） */
@@ -119,6 +112,68 @@ page {
   color: #9ca3af;
   font-size: 24rpx;
   padding: 24rpx 0 40rpx;
+}
+
+/* 登录引导（未登录时展示，不自动跳登录页） */
+.login-gate {
+  padding: 140rpx 64rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.login-gate-icon {
+  font-size: 88rpx;
+  margin-bottom: 24rpx;
+}
+.login-gate-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1f2937;
+}
+.login-gate-desc {
+  margin-top: 12rpx;
+  font-size: 26rpx;
+  color: #6b7280;
+}
+.login-gate-btn {
+  margin-top: 48rpx;
+  width: 360rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(90deg, var(--gradient-start, #3a7bfd), var(--gradient-end, #5b8def));
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+  padding: 0;
+  box-shadow: 0 10rpx 24rpx var(--primary-shadow, rgba(58, 123, 253, 0.3));
+}
+.login-gate-btn::after {
+  border: none;
+}
+/* 未登录引导里的次按钮（切换公司） */
+.login-gate-secondary {
+  margin-top: 24rpx;
+  width: 360rpx;
+  height: 88rpx;
+  border-radius: 44rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  color: var(--primary, #3a7bfd);
+  font-size: 32rpx;
+  font-weight: 600;
+  border: none;
+  padding: 0;
+  box-shadow: 0 4rpx 16rpx rgba(31, 41, 55, 0.08);
+}
+.login-gate-secondary::after {
+  border: none;
 }
 
 /* 弹窗 */
@@ -175,6 +230,143 @@ page {
   border: none;
 }
 .modal-btn-primary {
-  background: #3a7bfd;
+  background: var(--primary, #3a7bfd);
   color: #ffffff;
+}
+
+/* ============ 登录 / 入口页通用样式 ============
+ * 客户登录页（pages/login）与首页输入公司ID（pages/index）
+ * 共用同一套「渐变背景 + 玻璃卡片」布局，保证风格一致。
+ * 参考：进入公司界面（首页）的视觉风格。 */
+.hero-page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60rpx 48rpx;
+  padding-top: calc(env(safe-area-inset-top) + 120rpx);
+  padding-bottom: calc(env(safe-area-inset-bottom) + 100rpx);
+  background: linear-gradient(165deg, #1e3a8a 0%, var(--gradient-start, #3a7bfd) 50%, var(--gradient-end, #5b8def) 100%);
+}
+
+.hero-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 72rpx;
+}
+.hero-logo-wrap {
+  width: 176rpx;
+  height: 176rpx;
+  border-radius: 44rpx;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 36rpx;
+}
+.hero-logo {
+  width: 132rpx;
+  height: 132rpx;
+}
+.hero-title {
+  font-size: 52rpx;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 4rpx;
+}
+.hero-sub {
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.75);
+  letter-spacing: 2rpx;
+}
+
+.hero-card {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1rpx solid rgba(255, 255, 255, 0.25);
+  border-radius: 24rpx;
+  padding: 44rpx 36rpx;
+  backdrop-filter: blur(8rpx);
+}
+
+.hero-field {
+  margin-bottom: 28rpx;
+}
+.hero-field-label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.85);
+  margin-bottom: 12rpx;
+}
+.hero-input {
+  height: 96rpx;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 16rpx;
+  padding: 0 28rpx;
+  font-size: 32rpx;
+  color: #1f2937;
+}
+.hero-placeholder {
+  color: #9ca3af;
+}
+
+.hero-btn {
+  margin-top: 28rpx;
+  height: 96rpx;
+  line-height: 96rpx;
+  border-radius: 16rpx;
+  background: linear-gradient(90deg, var(--gradient-start, #3a7bfd), var(--gradient-end, #5b8def));
+  color: #ffffff;
+  font-size: 34rpx;
+  font-weight: 600;
+  text-align: center;
+  border: none;
+  padding: 0;
+  box-shadow: 0 12rpx 30rpx var(--primary-shadow, rgba(58, 123, 253, 0.3));
+}
+.hero-btn::after {
+  border: none;
+}
+.hero-btn[disabled] {
+  opacity: 0.7;
+}
+
+.hero-foot {
+  margin-top: 48rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 验证码一行（登录页专属） */
+.hero-code-row {
+  display: flex;
+  align-items: center;
+}
+.hero-code-input {
+  flex: 1;
+  min-width: 0;
+  margin-right: 20rpx;
+}
+.hero-code-btn {
+  flex-shrink: 0;
+  height: 96rpx;
+  line-height: 96rpx;
+  padding: 0 24rpx;
+  font-size: 26rpx;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.25);
+  border: 1rpx solid rgba(255, 255, 255, 0.4);
+  border-radius: 16rpx;
+  margin: 0;
+}
+.hero-code-btn::after {
+  border: none;
+}
+.hero-code-btn[disabled] {
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.15);
 }

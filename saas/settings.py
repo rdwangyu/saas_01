@@ -135,12 +135,23 @@ REST_FRAMEWORK = {
     'PAGE_SIZE': 20,
 }
 
-# JWT 配置
+# JWT 配置（员工后台登录）
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# ============================================================
+# 阿里云短信（客户登录验证码）
+# SMS_TEST_MODE=True 时不真正发短信，验证码打印到日志并随响应返回，便于联调。
+# 提供 AccessKey/签名/模板后置 False 并填入以下配置即可接入真实短信。
+# ============================================================
+SMS_TEST_MODE = True
+SMS_ALIYUN_ACCESS_KEY_ID = ''
+SMS_ALIYUN_ACCESS_KEY_SECRET = ''
+SMS_ALIYUN_SIGN_NAME = ''
+SMS_ALIYUN_TEMPLATE_CODE = ''
 
 # 默认主键类型
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

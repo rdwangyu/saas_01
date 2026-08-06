@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Company, User, Case, ProjectProgress, ProjectStage
+from .models import Company, Customer, User, Case, ProjectProgress, ProjectStage
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -8,7 +8,7 @@ class CompanySerializer(serializers.ModelSerializer):
         model = Company
         fields = [
             'id', 'name', 'credit_code', 'logo', 'description', 'phone', 'address',
-            'status', 'created_at',
+            'status', 'established_date', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
 
@@ -19,6 +19,15 @@ class CompanySerializer(serializers.ModelSerializer):
             self.fields['credit_code'].read_only = True
             self.fields['status'].read_only = True
             self.fields['name'].read_only = True
+
+
+class CustomerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Customer
+        fields = [
+            'id', 'name', 'phone', 'address', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at']
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -92,19 +101,25 @@ class ProjectStageSerializer(serializers.ModelSerializer):
 
 class ProjectProgressSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
-    progress_stage = serializers.IntegerField(read_only=True)
+    customer_name = serializers.CharField(source='customer.name', read_only=True)
+    customer_phone = serializers.CharField(source='customer.phone', read_only=True)
+    staff_name = serializers.CharField(source='staff.username', read_only=True)
+    staff_phone = serializers.CharField(source='staff.phone', read_only=True)
     current_stage_name = serializers.CharField(read_only=True)
     stages = ProjectStageSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProjectProgress
         fields = [
-            'id', 'company', 'company_name', 'project_name', 'customer_name',
-            'phone', 'address', 'created_at',
-            'current_stage_name', 'stages',
+            'id', 'company', 'company_name', 'project_name',
+            'customer', 'customer_name', 'customer_phone', 'address',
+            'staff', 'staff_name', 'staff_phone',
+            'created_at', 'current_stage_name', 'stages',
         ]
         read_only_fields = ['id', 'company', 'created_at',
-                           'progress_stage', 'current_stage_name', 'stages']
+                           'current_stage_name', 'stages',
+                           'customer_name', 'customer_phone',
+                           'staff_name', 'staff_phone']
 
     def create(self, validated_data):
         request = self.context.get('request')

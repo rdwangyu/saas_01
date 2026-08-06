@@ -1,4 +1,13 @@
-<view class="page" wx:if="{{detail}}">
+<view class="page" wx:if="{{needLogin}}">
+  <view class="login-gate">
+    <view class="login-gate-icon">🔐</view>
+    <view class="login-gate-title">请先登录</view>
+    <view class="login-gate-desc">登录后即可查看项目进度</view>
+    <button class="login-gate-btn" bindtap="goLogin">登录</button>
+  </view>
+</view>
+
+<view class="page" wx:elif="{{detail}}">
   <!-- 项目概要 -->
   <view class="card head-card">
     <view class="head-name">{{detail.project_name}}</view>
@@ -11,16 +20,17 @@
   <!-- 项目信息 -->
   <view class="card">
     <view class="info-row">
-      <view class="info-label">所属公司</view>
-      <view class="info-value">{{detail.company_name}}</view>
+      <view class="info-label">对接人</view>
+      <view class="info-value">{{detail.staff_name || '未分配'}}</view>
     </view>
-    <view class="info-row">
-      <view class="info-label">客户姓名</view>
-      <view class="info-value">{{detail.customer_name}}</view>
-    </view>
-    <view class="info-row" bindtap="callPhone" data-phone="{{detail.phone}}">
-      <view class="info-label">客户电话</view>
-      <view class="info-value link">📞 {{detail.phone}}</view>
+    <view
+      class="info-row"
+      wx:if="{{detail.staff_phone}}"
+      bindtap="callPhone"
+      data-phone="{{detail.staff_phone}}"
+    >
+      <view class="info-label">对接人电话</view>
+      <view class="info-value link">📞 {{detail.staff_phone}}</view>
     </view>
     <view class="info-row">
       <view class="info-label">项目地址</view>

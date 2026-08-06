@@ -6,9 +6,15 @@ Page({
     company: null,
     loading: true,
     error: '',
+    noCompany: false,
   },
 
   onShow() {
+    const id = getApp().globalData.currentCompanyId
+    if (!id) {
+      this.setData({ company: null, loading: false, noCompany: true, error: '' })
+      return
+    }
     this.loadCompany()
   },
 
@@ -17,21 +23,17 @@ Page({
   },
 
   async loadCompany() {
-    this.setData({ loading: true, error: '' })
+    const id = getApp().globalData.currentCompanyId
+    if (!id) return
+    this.setData({ loading: true, error: '', noCompany: false })
     try {
-      // 公司管理员只能看到自己的公司，超级管理员取第一条
-      const data = await request('/companies/')
-      const item = data.results && data.results.length ? data.results[0] : null
-      if (!item) {
-        this.setData({ company: null, loading: false })
-        return
-      }
+      const item = await request(`/public/companies/${id}/`)
       this.setData({
         company: {
           ...item,
           logo: absUrl(item.logo),
           logoText: initial(item.name),
-          createdText: formatDate(item.created_at),
+          establishedText: item.established_date ? formatDate(item.established_date) : '',
           active: item.status === 'active',
         },
         loading: false,
@@ -45,5 +47,9 @@ Page({
     const phone = e.currentTarget.dataset.phone
     if (!phone) return
     wx.makePhoneCall({ phoneNumber: String(phone) })
+  },
+
+  goIndex() {
+    wx.reLaunch({ url: '/pages/index/index' })
   },
 })

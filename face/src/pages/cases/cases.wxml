@@ -1,4 +1,14 @@
 <view class="page">
+  <empty
+    wx:if="{{noCompany}}"
+    text="请先在首页输入公司ID"
+    icon="🏢"
+    showAction="{{true}}"
+    actionText="去首页"
+    bind:action="goIndex"
+  />
+
+  <block wx:else>
   <view class="case-grid">
     <view
       class="case-card"
@@ -37,4 +47,5 @@
     actionText="重新加载"
     bind:action="loadList"
   />
+  </block>
 </view>
