@@ -1,0 +1,18 @@
+{% extends "admin/base.html" %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+  /* 必填项在字段标签旁显示红色星号
+     !important 覆盖 admin forms.css 的 .aligned label::after { content: '' } 布局规则 */
+  .required label::after,
+  label.required::after,
+  .required legend::after,
+  legend.required::after {
+      content: " *" !important;
+      color: var(--error-fg);
+      font-weight: bold;
+      margin-left: 1px;
+  }
+</style>
+{% endblock %}

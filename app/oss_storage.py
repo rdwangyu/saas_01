@@ -26,21 +26,21 @@ class OSSStorage(Storage):
         self.bucket = Bucket(auth, self.endpoint, self.bucket_name)
 
     def _key(self, name):
-        return name.replace('\\', '/')
+        return name.replace("\\", "/")
 
     def _save(self, name, content):
-        logger.info('_save called: name=%s', name)
+        logger.info("_save called: name=%s", name)
         key = self._key(name)
         content.seek(0)
         data = content.read()
-        logger.info('_save: uploading %d bytes to %s', len(data), key)
+        logger.info("_save: uploading %d bytes to %s", len(data), key)
         result = self.bucket.put_object(key, data)
         if result.status != 200:
-            raise IOError(f'OSS upload failed (status {result.status})')
-        logger.info('_save: upload OK, request_id=%s', result.request_id)
+            raise IOError(f"OSS upload failed (status {result.status})")
+        logger.info("_save: upload OK, request_id=%s", result.request_id)
         return name
 
-    def _open(self, name, mode='rb'):
+    def _open(self, name, mode="rb"):
         key = self._key(name)
         result = self.bucket.get_object(key)
         data = result.read()
@@ -62,23 +62,23 @@ class OSSStorage(Storage):
             return False
 
     def url(self, name):
-        key = quote(self._key(name), safe='/')
-        return f'https://{self.bucket_domain}/{key}'
+        key = quote(self._key(name), safe="/")
+        return f"https://{self.bucket_domain}/{key}"
 
     def size(self, name):
         key = self._key(name)
         result = self.bucket.get_object_meta(key)
-        return int(result.headers.get('content-length', 0))
+        return int(result.headers.get("content-length", 0))
 
     def path(self, name):
-        raise NotImplementedError('OSS storage has no local path')
+        raise NotImplementedError("OSS storage has no local path")
 
     def get_accessed_time(self, name):
         key = self._key(name)
         result = self.bucket.get_object_meta(key)
-        return result.headers.get('last-modified')
+        return result.headers.get("last-modified")
 
     def get_modified_time(self, name):
         key = self._key(name)
         result = self.bucket.get_object_meta(key)
-        return result.headers.get('last-modified')
+        return result.headers.get("last-modified")

@@ -1,0 +1,67 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · 公司管理后台</title>
+<link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}">
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <h1>白云企业管理</h1>
+    <p class="subtitle">公司管理后台登录（验证码）</p>
+
+    {% if messages %}
+    <ul class="messages">
+      {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    {% if debug_code %}
+    <div class="messages"><div class="success">测试模式验证码：<strong>{{ debug_code }}</strong>（{{ debug_phone }}）</div></div>
+    {% endif %}
+
+    {% if form.non_field_errors %}
+    <div class="messages"><div class="error">{{ form.non_field_errors }}</div></div>
+    {% endif %}
+
+    <!-- 发送验证码 -->
+    <form method="post" action="{% url 'dashboard:send_code' %}" class="send-code-form">
+      {% csrf_token %}
+      <p>
+        <label for="send_phone">手机号</label>
+        <input type="tel" name="phone" id="send_phone" maxlength="30" required placeholder="请输入员工手机号">
+      </p>
+      <button type="submit" class="btn" style="width:100%">发送验证码</button>
+    </form>
+
+    <hr>
+
+    <!-- 验证码登录 -->
+    <form method="post" action="{% url 'dashboard:login' %}">
+      {% csrf_token %}
+      <p>
+        <label for="{{ form.phone.id_for_label }}">手机号</label>
+        {{ form.phone }}
+      </p>
+      <p>
+        <label for="{{ form.code.id_for_label }}">验证码</label>
+        {{ form.code }}
+      </p>
+      <button type="submit" class="btn" style="width:100%">登 录</button>
+    </form>
+  </div>
+  <script>
+    // 两个手机号输入框互相同步，发送验证码后无需重复填写
+    (function () {
+      var a = document.getElementById('send_phone');
+      var b = document.getElementById('{{ form.phone.id_for_label }}');
+      if (a && b) {
+        a.addEventListener('input', function () { b.value = a.value; });
+        b.addEventListener('input', function () { a.value = b.value; });
+      }
+    })();
+  </script>
+</body>
+</html>

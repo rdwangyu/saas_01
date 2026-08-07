@@ -1,0 +1,43 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}{% if form.instance.pk %}编辑项目{% else %}新增项目{% endif %}{% endblock %}
+{% block content %}
+<div class="fieldset">
+  <form method="post" enctype="multipart/form-data" class="form-box">
+    {% csrf_token %}
+    {% include "dashboard/_form.html" %}
+
+    <h3>项目阶段</h3>
+    {{ stage_formset.management_form }}
+    <div class="stage-formset">
+      {% for stage_form in stage_formset.forms %}
+      <div class="stage-block">
+        {% if stage_form.instance.pk %}{{ stage_form.id }}{% endif %}
+        {{ stage_form.project }}
+        {% if stage_form.instance.pk %}
+        <div style="float:right">
+          <label class="delete-row">{{ stage_form.DELETE }} 删除此阶段</label>
+        </div>
+        {% endif %}
+        <div class="form-grid">
+          {% for field in stage_form.visible_fields %}
+            {% if field.name != "DELETE" %}
+            <div class="form-row">
+              {{ field.label_tag }}{% if field.field.required %}<span class="req">*</span>{% endif %}
+              {{ field }}
+              {% if field.errors %}{{ field.errors }}{% endif %}
+            </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% if stage_formset.non_form_errors %}
+    <ul class="errorlist">{{ stage_formset.non_form_errors }}</ul>
+    {% endif %}
+
+    <button type="submit" class="btn">保存</button>
+    <a href="{% url 'dashboard:project_list' %}" class="btn secondary">取消</a>
+  </form>
+</div>
+{% endblock %}

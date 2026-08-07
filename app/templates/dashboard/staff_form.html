@@ -1,0 +1,13 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}{% if form.instance.pk %}编辑员工{% else %}新增员工{% endif %}{% endblock %}
+{% block content %}
+<div class="fieldset">
+  <form method="post" class="form-box">
+    {% csrf_token %}
+    {% include "dashboard/_form.html" %}
+    <div class="help">员工用手机号+验证码登录系统后台，不设密码。停用后无法登录。</div>
+    <button type="submit" class="btn">保存</button>
+    <a href="{% url 'dashboard:staff_list' %}" class="btn secondary">取消</a>
+  </form>
+</div>
+{% endblock %}

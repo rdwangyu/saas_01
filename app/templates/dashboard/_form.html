@@ -1,0 +1,26 @@
+{% for field in form %}
+<div class="form-row">
+  {% if field.name == "remove_images" %}
+    {{ field.label_tag }}
+    {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+    {% if form.instance.images %}
+    <div class="thumb-list">
+      {% for choice in field %}
+      <label class="thumb" style="cursor:pointer">
+        <img src="{{ choice.choice_label }}" alt="">
+        <span class="thumb-label">{{ choice.tag }} 删除</span>
+      </label>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="help">暂无图片</div>
+    {% endif %}
+    {% if field.errors %}{{ field.errors }}{% endif %}
+  {% else %}
+    {{ field.label_tag }}{% if field.field.required %}<span class="req">*</span>{% endif %}
+    {{ field }}
+    {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+    {% if field.errors %}{{ field.errors }}{% endif %}
+  {% endif %}
+</div>
+{% endfor %}

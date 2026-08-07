@@ -1,0 +1,19 @@
+#+TITLE todo
+#+AUTHOR rdwangyu
+#+DATE <2026-08-07 Fri 13:27>
+
+* Django
+
+** feature
+
+** bug
+- [ ] 
+
+
+
+
+* Wechat MiniProgram
+
+** feature
+
+** bug

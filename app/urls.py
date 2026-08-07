@@ -1,47 +1,55 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import (
-    TokenObtainPairView,
-    TokenRefreshView,
-)
+"""URL 配置：后台 dashboard 与前台 api 两组路由，供根 URLconf 分别挂载。"""
 
-from .views import (
-    CurrentUserViewSet,
-    UserViewSet,
-    CompanyViewSet,
-    CaseViewSet,
-    ProjectProgressViewSet,
-    PublicCompanyDetail,
-    PublicCaseList,
-    PublicCaseDetail,
-    SendCodeView,
-    CustomerLoginView,
-    CustomerMeView,
-    CustomerProjectListView,
-    CustomerProjectDetailView,
-)
+from django.urls import path
 
-router = DefaultRouter()
-router.register(r'cases', CaseViewSet, basename='case')
-router.register(r'projects', ProjectProgressViewSet, basename='project')
-router.register(r'companies', CompanyViewSet, basename='company')
-router.register(r'users', UserViewSet, basename='user')
+from . import views
 
-urlpatterns = [
-    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('me/', CurrentUserViewSet.as_view({'get': 'me'}), name='current_user'),
-    path('', include(router.urls)),
+# /dashboard/ 后台（员工验证码登录的租户后台）
+dashboard_patterns = [
+    path("login/", views.DashboardLoginView.as_view(), name="login"),
+    path("send-code/", views.DashboardSendCodeView.as_view(), name="send_code"),
+    path("logout/", views.DashboardLogoutView.as_view(), name="logout"),
+    path("", views.DashboardIndexView.as_view(), name="index"),
+    path("company/", views.CompanyUpdateView.as_view(), name="company"),
+    path("cases/", views.CaseListView.as_view(), name="case_list"),
+    path("cases/new/", views.CaseCreateView.as_view(), name="case_create"),
+    path("cases/<int:pk>/", views.CaseUpdateView.as_view(), name="case_update"),
+    path("cases/<int:pk>/delete/", views.CaseDeleteView.as_view(), name="case_delete"),
+    path("projects/", views.ProjectListView.as_view(), name="project_list"),
+    path("projects/new/", views.ProjectCreateView.as_view(), name="project_create"),
+    path("projects/<int:pk>/", views.ProjectUpdateView.as_view(), name="project_update"),
+    path("projects/<int:pk>/delete/", views.ProjectDeleteView.as_view(), name="project_delete"),
+    path("customers/", views.CustomerListView.as_view(), name="customer_list"),
+    path("customers/<int:pk>/", views.CustomerDetailView.as_view(), name="customer_detail"),
+    path("staff/", views.StaffListView.as_view(), name="staff_list"),
+    path("staff/new/", views.StaffCreateView.as_view(), name="staff_create"),
+    path("staff/<int:pk>/", views.StaffUpdateView.as_view(), name="staff_update"),
+]
 
-    # 公开只读接口（前台小程序免登录）
-    path('public/companies/<int:pk>/', PublicCompanyDetail.as_view(), name='public-company-detail'),
-    path('public/cases/', PublicCaseList.as_view(), name='public-case-list'),
-    path('public/cases/<int:pk>/', PublicCaseDetail.as_view(), name='public-case-detail'),
-
-    # 客户登录体系
-    path('customer/send-code/', SendCodeView.as_view(), name='customer-send-code'),
-    path('customer/login/', CustomerLoginView.as_view(), name='customer-login'),
-    path('customer/me/', CustomerMeView.as_view(), name='customer-me'),
-    path('customer/projects/', CustomerProjectListView.as_view(), name='customer-project-list'),
-    path('customer/projects/<int:pk>/', CustomerProjectDetailView.as_view(), name='customer-project-detail'),
+# /api/ 前台（客户 + 公开 API）
+api_patterns = [
+    path(
+        "public/companies/<int:pk>/",
+        views.PublicCompanyDetail.as_view(),
+        name="public-company-detail",
+    ),
+    path("public/cases/", views.PublicCaseList.as_view(), name="public-case-list"),
+    path(
+        "public/cases/<int:pk>/",
+        views.PublicCaseDetail.as_view(),
+        name="public-case-detail",
+    ),
+    path("customer/send-code/", views.SendCodeView.as_view(), name="customer-send-code"),
+    path("customer/login/", views.CustomerLoginView.as_view(), name="customer-login"),
+    path("customer/me/", views.CustomerMeView.as_view(), name="customer-me"),
+    path(
+        "customer/projects/",
+        views.CustomerProjectListView.as_view(),
+        name="customer-project-list",
+    ),
+    path(
+        "customer/projects/<int:pk>/",
+        views.CustomerProjectDetailView.as_view(),
+        name="customer-project-detail",
+    ),
 ]

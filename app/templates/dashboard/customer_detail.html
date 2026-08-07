@@ -1,0 +1,29 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}客户详情{% endblock %}
+{% block content %}
+<div class="card">
+  <h3 style="margin-top:0">{{ customer.name }} <span class="video-badge">{{ customer.phone }}</span></h3>
+  <p>住址：{{ customer.address|default:"—" }}</p>
+  <p>创建时间：{{ customer.created_at|date:"Y-m-d H:i" }}</p>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">关联项目</h3>
+  {% if projects %}
+  <table class="list">
+    <tr>
+      <th>项目</th><th>公司</th><th>负责人</th><th>创建时间</th>
+    </tr>
+    {% for p in projects %}
+    <tr>
+      <td><a href="{% url 'dashboard:project_update' p.pk %}">{{ p.project_name }}</a></td>
+      <td>{{ p.company.name }}</td>
+      <td>{{ p.staff.name|default:"—" }}</td>
+      <td>{{ p.created_at|date:"Y-m-d" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <div class="empty">暂无关联项目。</div>
+  {% endif %}
+</div>
+{% endblock %}

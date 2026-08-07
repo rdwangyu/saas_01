@@ -1,0 +1,28 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}员工管理{% endblock %}
+{% block content %}
+<div class="toolbar">
+  <div></div>
+  <a href="{% url 'dashboard:staff_create' %}" class="btn">新增员工</a>
+</div>
+{% if staff_list %}
+<table class="list">
+  <tr>
+    <th>用户名</th><th>姓名</th><th>电话</th><th>邮箱</th><th>公司</th><th>状态</th><th>操作</th>
+  </tr>
+  {% for s in staff_list %}
+  <tr>
+    <td><a href="{% url 'dashboard:staff_update' s.pk %}">{{ s.name }}</a></td>
+    <td>{{ s.name|default:"—" }}</td>
+    <td>{{ s.phone|default:"—" }}</td>
+    <td>{{ s.email|default:"—" }}</td>
+    <td>{{ s.company.name }}</td>
+    <td>{% if s.is_active %}<span class="badge active">启用</span>{% else %}<span class="badge inactive">停用</span>{% endif %}</td>
+    <td><a class="btn secondary sm" href="{% url 'dashboard:staff_update' s.pk %}">编辑</a></td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<div class="card empty">暂无员工。</div>
+{% endif %}
+{% endblock %}

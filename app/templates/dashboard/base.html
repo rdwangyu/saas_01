@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}公司管理后台{% endblock %} · 白云企业管理</title>
+<link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">白云企业管理<small>公司管理后台</small></div>
+    <nav>
+      <a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">工作台</a>
+      <a href="{% url 'dashboard:company' %}" class="{% if request.resolver_match.url_name == 'company' %}active{% endif %}">公司信息</a>
+      <a href="{% url 'dashboard:case_list' %}" class="{% if request.resolver_match.url_name|slice:':4' == 'case' %}active{% endif %}">案例管理</a>
+      <a href="{% url 'dashboard:project_list' %}" class="{% if request.resolver_match.url_name|slice:':7' == 'project' %}active{% endif %}">项目进度</a>
+      <a href="{% url 'dashboard:customer_list' %}" class="{% if request.resolver_match.url_name|slice:':8' == 'customer' %}active{% endif %}">客户</a>
+      <a href="{% url 'dashboard:staff_list' %}" class="{% if request.resolver_match.url_name|slice:':5' == 'staff' %}active{% endif %}">员工管理</a>
+    </nav>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="page-title">{% block page_title %}{% endblock %}</div>
+      <div class="user-box">
+        <span>{{ current_staff.name }}</span>
+        <form method="post" action="{% url 'dashboard:logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="logout-btn">退出登录</button>
+        </form>
+      </div>
+    </header>
+    <div class="content">
+      {% if messages %}
+      <ul class="messages">
+        {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+</body>
+</html>

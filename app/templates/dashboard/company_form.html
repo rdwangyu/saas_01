@@ -1,0 +1,11 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}公司信息{% endblock %}
+{% block content %}
+<div class="fieldset">
+  <form method="post" enctype="multipart/form-data" class="form-box">
+    {% csrf_token %}
+    {% include "dashboard/_form.html" %}
+    <button type="submit" class="btn">保存</button>
+  </form>
+</div>
+{% endblock %}

@@ -5,141 +5,129 @@ Django settings for saas project.
 """
 
 from pathlib import Path
-from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-2x)l(1j!#u%q1ul#q5yt)@8#acelczv=$&zy0yyx#v0(z&kmwg'
+SECRET_KEY = "django-insecure-2x)l(1j!#u%q1ul#q5yt)@8#acelczv=$&zy0yyx#v0(z&kmwg"
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
 # ============================================================
 # 应用注册
 # ============================================================
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
     # 第三方
-    'rest_framework',
-    'rest_framework_simplejwt',
+    "rest_framework",
+    "rest_framework_simplejwt",
     # 业务应用
-    'app',
+    "app",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = 'saas.urls'
+ROOT_URLCONF = "saas.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'saas.wsgi.application'
+WSGI_APPLICATION = "saas.wsgi.application"
 
 # ============================================================
 # 数据库 — SQLite
 # ============================================================
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
     }
 }
 
 # ============================================================
-# 自定义用户模型
-# ============================================================
-AUTH_USER_MODEL = 'app.User'
-
-# ============================================================
-# 密码校验
+# 密码校验（admin 认证用户 auth.User 使用）
 # ============================================================
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"
+    },
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # ============================================================
 # 国际化 — 中文
 # ============================================================
-LANGUAGE_CODE = 'zh-hans'
-TIME_ZONE = 'Asia/Shanghai'
+LANGUAGE_CODE = "zh-hans"
+TIME_ZONE = "Asia/Shanghai"
 USE_I18N = True
 USE_TZ = True
 
 # ============================================================
 # 静态文件
 # ============================================================
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # ============================================================
 # 阿里云 OSS — 媒体文件存储
 # ============================================================
 STORAGES = {
-    'default': {
-        'BACKEND': 'app.oss_storage.OSSStorage',
+    "default": {
+        "BACKEND": "app.oss_storage.OSSStorage",
     },
-    'staticfiles': {
-        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
-MEDIA_URL = f'https://byqg-image.oss-cn-beijing.aliyuncs.com/'
+MEDIA_URL = "https://byqg-image.oss-cn-beijing.aliyuncs.com/"
 
-ALIYUN_OSS_ACCESS_KEY_ID = ''
-ALIYUN_OSS_ACCESS_KEY_SECRET = ''
-ALIYUN_OSS_BUCKET_NAME = 'byqg-image'
-ALIYUN_OSS_ENDPOINT = 'oss-cn-beijing.aliyuncs.com'
-ALIYUN_OSS_BUCKET_DOMAIN = 'byqg-image.oss-cn-beijing.aliyuncs.com'
+
+ALIYUN_OSS_ACCESS_KEY_ID = ""
+ALIYUN_OSS_ACCESS_KEY_SECRET = ""
+ALIYUN_OSS_BUCKET_NAME = "byqg-image"
+ALIYUN_OSS_ENDPOINT = "oss-cn-beijing.aliyuncs.com"
+ALIYUN_OSS_BUCKET_DOMAIN = "byqg-image.oss-cn-beijing.aliyuncs.com"
 
 # ============================================================
-# DRF 配置 — JWT 鉴权
+# DRF 配置（客户 + 公开 API）
 # ============================================================
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # 保留 Session 认证，方便 Admin 和 DRF 共用
-        'rest_framework.authentication.SessionAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
     ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
     ],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-}
-
-# JWT 配置（员工后台登录）
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
-    'AUTH_HEADER_TYPES': ('Bearer',),
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
 }
 
 # ============================================================
@@ -148,10 +136,10 @@ SIMPLE_JWT = {
 # 提供 AccessKey/签名/模板后置 False 并填入以下配置即可接入真实短信。
 # ============================================================
 SMS_TEST_MODE = True
-SMS_ALIYUN_ACCESS_KEY_ID = ''
-SMS_ALIYUN_ACCESS_KEY_SECRET = ''
-SMS_ALIYUN_SIGN_NAME = ''
-SMS_ALIYUN_TEMPLATE_CODE = ''
+SMS_ALIYUN_ACCESS_KEY_ID = ""
+SMS_ALIYUN_ACCESS_KEY_SECRET = ""
+SMS_ALIYUN_SIGN_NAME = ""
+SMS_ALIYUN_TEMPLATE_CODE = ""
 
 # 默认主键类型
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

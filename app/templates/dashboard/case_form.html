@@ -1,0 +1,12 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}{% if form.instance.pk %}编辑案例{% else %}新增案例{% endif %}{% endblock %}
+{% block content %}
+<div class="fieldset">
+  <form method="post" enctype="multipart/form-data" class="form-box">
+    {% csrf_token %}
+    {% include "dashboard/_form.html" %}
+    <button type="submit" class="btn">保存</button>
+    <a href="{% url 'dashboard:case_list' %}" class="btn secondary">取消</a>
+  </form>
+</div>
+{% endblock %}
