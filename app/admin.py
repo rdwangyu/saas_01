@@ -1,7 +1,5 @@
 from django import forms
 from django.contrib import admin
-from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from django.contrib.auth.models import User as AuthUser
 from django.utils.html import format_html
 
 from .models import (
@@ -52,6 +50,10 @@ class CompanyForm(forms.ModelForm):
         widgets = {
             "logo": forms.FileInput(),
         }
+
+    def clean_credit_code(self):
+        val = self.cleaned_data.get("credit_code")
+        return val.upper() if val else val
 
 
 @admin.register(Company)
@@ -230,13 +232,6 @@ class StaffAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
     role_display.short_description = "角色"
 
 
-admin.site.unregister(AuthUser)
-
-
-@admin.register(AuthUser)
-class AuthUserAdmin(SuperuserOnlyMixin, BaseUserAdmin):
-    """admin 管理员账号（auth.User），仅超管可管理。"""
-
 
 @admin.register(Case)
 class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
@@ -291,9 +286,13 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         form = super().get_form(request, obj=obj, **kwargs)
 
         if "cover" in form.base_fields:
-            form.base_fields["cover"].widget = forms.FileInput(attrs={"accept": "image/*"})
+            form.base_fields["cover"].widget = forms.FileInput(
+                attrs={"accept": "image/*"}
+            )
         if "video" in form.base_fields:
-            form.base_fields["video"].widget = forms.FileInput(attrs={"accept": "video/*"})
+            form.base_fields["video"].widget = forms.FileInput(
+                attrs={"accept": "video/*"}
+            )
 
         return form
 

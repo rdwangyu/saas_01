@@ -37,29 +37,113 @@ a:hover { text-decoration: underline; }
   min-height: 100vh;
   background: linear-gradient(135deg, #1e3a8a, #0f172a);
 }
+
 .login-card {
-  width: 360px;
-  padding: 32px;
+  width: 380px;
+  padding: 40px 36px 36px;
   background: #fff;
   border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, .3);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
 }
+
 .login-card h1 {
-  margin: 0 0 4px;
-  font-size: 20px;
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 700;
   text-align: center;
+  color: #1e293b;
 }
+
 .login-card .subtitle {
-  margin: 0 0 24px;
+  margin: 0 0 28px;
   text-align: center;
   color: var(--muted);
+  font-size: 14px;
 }
-.login-card form p { margin: 0 0 14px; }
-.login-card label {
+
+/* 字段标签 */
+.login-card .field-label {
   display: block;
   margin-bottom: 6px;
+  font-size: 14px;
+  color: #334155;
+  font-weight: 500;
+}
+
+/* 表单间距 */
+.login-card form + form {
+  margin-top: 18px;
+}
+
+/* ---- 手机号行 ---- */
+.phone-row {
+  display: flex;
+  gap: 10px;
+}
+
+/* width:0 覆盖全局 input[type="tel"] { width:100% }，让 flex 控制宽度 */
+.phone-row input[type="tel"] {
+  flex: 1;
+  width: 0;
+  min-width: 0;
+}
+
+.btn-send {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  padding: 0 18px;
+  background: #fff;
+  color: var(--primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+.btn-send:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary-dark);
+}
+.btn-send:disabled {
   color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* 发送验证码的消息提示 */
+.send-code-msg {
   font-size: 13px;
+  margin-top: 6px;
+  min-height: 0;
+}
+.send-code-msg.success { color: var(--ok); }
+.send-code-msg.error   { color: var(--danger); }
+
+/* ---- 验证码输入 ---- */
+.login-card #id_code {
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  letter-spacing: 4px;
+  padding: 10px;
+}
+
+/* ---- 登录按钮 ---- */
+.btn-login {
+  width: 100%;
+  margin-top: 18px;
+  padding: 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 4px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background .15s;
+}
+.btn-login:hover {
+  background: var(--primary-dark);
 }
 
 /* ---------- 布局 ---------- */

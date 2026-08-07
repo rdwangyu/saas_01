@@ -13,7 +13,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -155,28 +155,50 @@ class DashboardSendCodeView(View):
 
     def post(self, request):
         phone = (request.POST.get("phone") or "").strip()
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
         if not phone:
-            messages.error(request, "请输入手机号。")
-        elif not Staff.objects.filter(phone=phone, is_active=True).exists():
-            messages.error(request, "该手机号未登记为员工，请联系管理员。")
+            msg = "请输入手机号。"
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": msg})
+            messages.error(request, msg)
+            return HttpResponseRedirect(reverse_lazy("dashboard:login"))
+
+        if not Staff.objects.filter(phone=phone, is_active=True).exists():
+            msg = "该手机号未登记为员工，请联系管理员。"
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": msg})
+            messages.error(request, msg)
+            return HttpResponseRedirect(reverse_lazy("dashboard:login"))
+
+        last = (
+            SmsCode.objects.filter(phone=phone, purpose=SmsCode.Purpose.STAFF_LOGIN)
+            .order_by("-created_at")
+            .first()
+        )
+        if last and (timezone.now() - last.created_at).total_seconds() < 60:
+            msg = "发送过于频繁，请稍后再试。"
+            if is_ajax:
+                return JsonResponse({"ok": False, "message": msg})
+            messages.error(request, msg)
+            return HttpResponseRedirect(reverse_lazy("dashboard:login"))
+
+        code = f"{random.randint(0, 999999):06d}"
+        SmsCode.objects.create(phone=phone, code=code, purpose=SmsCode.Purpose.STAFF_LOGIN)
+        if getattr(settings, "SMS_TEST_MODE", True):
+            request.session["debug_code"] = code
+            request.session["debug_phone"] = phone
+            print(f"[SMS] 员工验证码: {code} -> {phone}")
+            msg = "验证码已发送（测试模式）。"
+            if is_ajax:
+                return JsonResponse({"ok": True, "message": msg, "debug_code": code})
+            messages.success(request, msg)
         else:
-            last = (
-                SmsCode.objects.filter(phone=phone, purpose=SmsCode.Purpose.STAFF_LOGIN)
-                .order_by("-created_at")
-                .first()
-            )
-            if last and (timezone.now() - last.created_at).total_seconds() < 60:
-                messages.error(request, "发送过于频繁，请稍后再试。")
-            else:
-                code = f"{random.randint(0, 999999):06d}"
-                SmsCode.objects.create(phone=phone, code=code, purpose=SmsCode.Purpose.STAFF_LOGIN)
-                if getattr(settings, "SMS_TEST_MODE", True):
-                    request.session["debug_code"] = code
-                    request.session["debug_phone"] = phone
-                    print(f"[SMS] 员工验证码: {code} -> {phone}")
-                    messages.success(request, "验证码已发送（测试模式）。")
-                else:
-                    messages.success(request, "验证码已发送。")
+            msg = "验证码已发送。"
+            if is_ajax:
+                return JsonResponse({"ok": True, "message": msg})
+            messages.success(request, msg)
+
         return HttpResponseRedirect(reverse_lazy("dashboard:login"))
 
 

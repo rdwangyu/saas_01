@@ -9,8 +9,9 @@
 </head>
 <body class="login-page">
   <div class="login-card">
+
     <h1>白云企业管理</h1>
-    <p class="subtitle">公司管理后台登录（验证码）</p>
+    <p class="subtitle">公司管理后台</p>
 
     {% if messages %}
     <ul class="messages">
@@ -19,7 +20,7 @@
     {% endif %}
 
     {% if debug_code %}
-    <div class="messages"><div class="success">测试模式验证码：<strong>{{ debug_code }}</strong>（{{ debug_phone }}）</div></div>
+    <div class="messages"><div class="success">测试验证码：<strong>{{ debug_code }}</strong>（{{ debug_phone }}）</div></div>
     {% endif %}
 
     {% if form.non_field_errors %}
@@ -27,41 +28,122 @@
     {% endif %}
 
     <!-- 发送验证码 -->
-    <form method="post" action="{% url 'dashboard:send_code' %}" class="send-code-form">
+    <form method="post" action="{% url 'dashboard:send_code' %}" id="send-code-form">
       {% csrf_token %}
-      <p>
-        <label for="send_phone">手机号</label>
-        <input type="tel" name="phone" id="send_phone" maxlength="30" required placeholder="请输入员工手机号">
-      </p>
-      <button type="submit" class="btn" style="width:100%">发送验证码</button>
+      <label class="field-label" for="send_phone">手机号</label>
+      <div class="phone-row">
+        <input type="tel" name="phone" id="send_phone" maxlength="30" required placeholder="请输入手机号" autocomplete="tel">
+        <button type="submit" class="btn-send" id="btn-send-code">获取验证码</button>
+      </div>
+      <div id="send-code-msg" class="send-code-msg"></div>
     </form>
-
-    <hr>
 
     <!-- 验证码登录 -->
-    <form method="post" action="{% url 'dashboard:login' %}">
+    <form method="post" action="{% url 'dashboard:login' %}" id="login-form">
       {% csrf_token %}
-      <p>
-        <label for="{{ form.phone.id_for_label }}">手机号</label>
-        {{ form.phone }}
-      </p>
-      <p>
-        <label for="{{ form.code.id_for_label }}">验证码</label>
-        {{ form.code }}
-      </p>
-      <button type="submit" class="btn" style="width:100%">登 录</button>
+      <input type="hidden" name="{{ form.phone.html_name }}" id="{{ form.phone.id_for_label }}">
+      <label class="field-label" for="{{ form.code.id_for_label }}">验证码</label>
+      {{ form.code }}
+      <button type="submit" class="btn-login">登 录</button>
     </form>
+
   </div>
+
   <script>
-    // 两个手机号输入框互相同步，发送验证码后无需重复填写
-    (function () {
-      var a = document.getElementById('send_phone');
-      var b = document.getElementById('{{ form.phone.id_for_label }}');
-      if (a && b) {
-        a.addEventListener('input', function () { b.value = a.value; });
-        b.addEventListener('input', function () { a.value = b.value; });
+  (function () {
+    var phoneInput = document.getElementById('send_phone');
+    var hiddenPhone = document.getElementById('{{ form.phone.id_for_label }}');
+
+    // 同步手机号到隐藏字段
+    if (phoneInput && hiddenPhone) {
+      phoneInput.addEventListener('input', function () {
+        hiddenPhone.value = phoneInput.value;
+      });
+    }
+
+    // ---- 发送验证码：AJAX + 60s 倒计时 ----
+    var sendForm = document.getElementById('send-code-form');
+    var btnSend = document.getElementById('btn-send-code');
+    var msgBox = document.getElementById('send-code-msg');
+
+    var timer = null;
+    var countdown = 0;
+
+    function showMsg(text, cls) {
+      if (msgBox) {
+        msgBox.textContent = text;
+        msgBox.className = 'send-code-msg ' + cls;
       }
-    })();
+    }
+
+    function startCountdown() {
+      countdown = 60;
+      btnSend.disabled = true;
+      btnSend.textContent = countdown + 's 后重试';
+      timer = setInterval(function () {
+        countdown--;
+        if (countdown <= 0) {
+          clearInterval(timer);
+          timer = null;
+          btnSend.disabled = false;
+          btnSend.textContent = '获取验证码';
+        } else {
+          btnSend.textContent = countdown + 's 后重试';
+        }
+      }, 1000);
+    }
+
+    if (sendForm) {
+      sendForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        var phone = phoneInput.value.trim();
+        if (!phone) {
+          showMsg('请输入手机号', 'error');
+          return;
+        }
+
+        if (timer) {
+          return; // 还在倒计时
+        }
+
+        btnSend.disabled = true;
+        btnSend.textContent = '发送中…';
+        showMsg('', '');
+
+        var formData = new FormData();
+        formData.append('phone', phone);
+        formData.append('csrfmiddlewaretoken', sendForm.querySelector('[name="csrfmiddlewaretoken"]').value);
+
+        fetch(sendForm.action, {
+          method: 'POST',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' },
+          body: formData
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data.ok) {
+            showMsg(data.message, 'success');
+            startCountdown();
+          } else {
+            showMsg(data.message, 'error');
+            btnSend.disabled = false;
+            btnSend.textContent = '获取验证码';
+          }
+        })
+        .catch(function () {
+          showMsg('网络异常，请重试', 'error');
+          btnSend.disabled = false;
+          btnSend.textContent = '获取验证码';
+        });
+      });
+    }
+
+    // 初始同步（防止模板预填）
+    if (phoneInput && hiddenPhone && phoneInput.value) {
+      hiddenPhone.value = phoneInput.value;
+    }
+  })();
   </script>
 </body>
 </html>

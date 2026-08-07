@@ -18,6 +18,8 @@ ALLOWED_HOSTS = ["*"]
 # 应用注册
 # ============================================================
 INSTALLED_APPS = [
+    # 业务应用（必须在 django.contrib.admin 之前，才能覆盖 admin 模板）
+    "app",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -27,8 +29,6 @@ INSTALLED_APPS = [
     # 第三方
     "rest_framework",
     "rest_framework_simplejwt",
-    # 业务应用
-    "app",
 ]
 
 MIDDLEWARE = [

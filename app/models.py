@@ -18,9 +18,6 @@ class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
         self.update(status=CommonStatus.INACTIVE)
 
-    def hard_delete(self):
-        super().delete()
-
 
 class SoftDeleteManager(models.Manager):
     """返回 SoftDeleteQuerySet 的管理器。"""
@@ -109,11 +106,6 @@ class Company(models.Model):
         self.status = CommonStatus.INACTIVE
         self.save(update_fields=["status"])
 
-    def hard_delete(self, *args, **kwargs):
-        if self.logo:
-            self.logo.delete(save=False)
-        super().delete(*args, **kwargs)
-
     @property
     def max_images(self) -> int:
         return 8
@@ -161,8 +153,6 @@ class Staff(models.Model):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
-        null=True,
-        blank=True,
         related_name="staff",
         verbose_name="所属公司",
     )
