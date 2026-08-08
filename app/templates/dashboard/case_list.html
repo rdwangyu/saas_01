@@ -2,30 +2,38 @@
 {% block page_title %}案例管理{% endblock %}
 {% block content %}
 <div class="toolbar">
-  <div></div>
-  <a href="{% url 'dashboard:case_create' %}" class="btn">新增案例</a>
+  <form class="search-box" method="get">
+    <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="搜索案例标题、风格…">
+    <button type="submit" class="btn secondary sm">搜索</button>
+    {% if request.GET.q %}<a href="{% url 'dashboard:case_list' %}" class="btn secondary sm">清除</a>{% endif %}
+  </form>
+  <a href="{% url 'dashboard:case_create' %}" class="btn">＋ 新增案例</a>
 </div>
 {% if cases %}
-<table class="list">
-  <tr>
-    <th>封面</th><th>标题</th><th>公司</th><th>风格</th><th>面积</th><th>预算</th><th>创建时间</th><th>操作</th>
-  </tr>
-  {% for c in cases %}
-  <tr>
-    <td>{% if c.cover %}<img class="cover-sm" src="{{ c.cover.url }}" alt="">{% else %}—{% endif %}</td>
-    <td><a href="{% url 'dashboard:case_update' c.pk %}">{{ c.title }}</a></td>
-    <td>{{ c.company.name }}</td>
-    <td>{{ c.style|default:"—" }}</td>
-    <td>{{ c.area|default:"—" }}</td>
-    <td>{{ c.budget|default:"—" }}</td>
-    <td>{{ c.created_at|date:"Y-m-d" }}</td>
-    <td>
-      <a class="btn secondary sm" href="{% url 'dashboard:case_update' c.pk %}">编辑</a>
-      <a class="btn danger sm" href="{% url 'dashboard:case_delete' c.pk %}">删除</a>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+<div class="table-card">
+  <table class="list">
+    <thead>
+      <tr><th>封面</th><th>标题</th><th>公司</th><th>风格</th><th>面积</th><th>预算</th><th>创建时间</th><th class="actions">操作</th></tr>
+    </thead>
+    <tbody>
+    {% for c in cases %}
+    <tr>
+      <td>{% if c.cover %}<img class="cover-sm" src="{{ c.cover.url }}" alt="">{% else %}—{% endif %}</td>
+      <td><a href="{% url 'dashboard:case_update' c.pk %}">{{ c.title }}</a></td>
+      <td>{{ c.company.name }}</td>
+      <td>{{ c.style|default:"—" }}</td>
+      <td>{{ c.area|default:"—" }}</td>
+      <td>{{ c.budget|default:"—" }}</td>
+      <td>{{ c.created_at|date:"Y-m-d" }}</td>
+      <td class="actions">
+        <a class="btn secondary sm" href="{% url 'dashboard:case_update' c.pk %}">编辑</a>
+        <a class="btn danger sm" href="{% url 'dashboard:case_delete' c.pk %}">删除</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% include "dashboard/_pagination.html" with page_obj=page_obj %}
 {% else %}
 <div class="card empty">暂无案例，<a href="{% url 'dashboard:case_create' %}">新增一个</a>。</div>

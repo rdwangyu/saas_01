@@ -2,6 +2,8 @@ from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
 
+from .widgets import SimpleFileInput
+
 from .models import (
     Company,
     Customer,
@@ -48,7 +50,7 @@ class CompanyForm(forms.ModelForm):
         model = Company
         fields = "__all__"
         widgets = {
-            "logo": forms.FileInput(),
+            "logo": SimpleFileInput(),
         }
 
     def clean_credit_code(self):
@@ -286,11 +288,11 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         form = super().get_form(request, obj=obj, **kwargs)
 
         if "cover" in form.base_fields:
-            form.base_fields["cover"].widget = forms.FileInput(
+            form.base_fields["cover"].widget = SimpleFileInput(
                 attrs={"accept": "image/*"}
             )
         if "video" in form.base_fields:
-            form.base_fields["video"].widget = forms.FileInput(
+            form.base_fields["video"].widget = SimpleFileInput(
                 attrs={"accept": "video/*"}
             )
 

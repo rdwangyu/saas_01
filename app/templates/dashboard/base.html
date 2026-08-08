@@ -4,13 +4,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}公司管理后台{% endblock %} · 白云企业管理</title>
+<title>公司管理后台 · 白云企业管理</title>
 <link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}">
 </head>
 <body>
 <div class="layout">
   <aside class="sidebar">
-    <div class="brand">白云企业管理<small>公司管理后台</small></div>
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <div class="brand-text">
+        <strong>白云企业管理</strong>
+        <small>公司管理后台</small>
+      </div>
+    </div>
     <nav>
       <a href="{% url 'dashboard:index' %}" class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">工作台</a>
       <a href="{% url 'dashboard:company' %}" class="{% if request.resolver_match.url_name == 'company' %}active{% endif %}">公司信息</a>
@@ -19,12 +25,13 @@
       <a href="{% url 'dashboard:customer_list' %}" class="{% if request.resolver_match.url_name|slice:':8' == 'customer' %}active{% endif %}">客户</a>
       <a href="{% url 'dashboard:staff_list' %}" class="{% if request.resolver_match.url_name|slice:':5' == 'staff' %}active{% endif %}">员工管理</a>
     </nav>
+    <div class="side-foot">{{ current_staff.name }} · {{ current_staff.company.name }}</div>
   </aside>
   <div class="main">
     <header class="topbar">
       <div class="page-title">{% block page_title %}{% endblock %}</div>
       <div class="user-box">
-        <span>{{ current_staff.name }}</span>
+        <span class="user-name">{{ current_staff.name }}</span>
         <form method="post" action="{% url 'dashboard:logout' %}">
           {% csrf_token %}
           <button type="submit" class="logout-btn">退出登录</button>
@@ -41,5 +48,13 @@
     </div>
   </div>
 </div>
+<script>
+  (function () {
+    var el = document.querySelector('.topbar .page-title');
+    if (el && el.textContent.trim()) {
+      document.title = el.textContent.trim() + ' · 白云企业管理';
+    }
+  })();
+</script>
 </body>
 </html>

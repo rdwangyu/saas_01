@@ -1,12 +1,15 @@
 {% extends "dashboard/base.html" %}
 {% block page_title %}确认删除{% endblock %}
 {% block content %}
-<div class="card form-box">
-  <p>确定要删除「{{ object }}」吗？删除后该记录将从列表中消失。</p>
+<div class="card confirm-delete-box">
+  <div class="warning-icon">⚠️</div>
+  <p>确定要删除 <strong>{{ object }}</strong> 吗？<br>删除后该记录将从列表中消失，不可恢复。</p>
   <form method="post">
     {% csrf_token %}
-    <button type="submit" class="btn danger">确认删除</button>
-    <a href="javascript:history.back()" class="btn secondary">取消</a>
+    <div class="btn-group">
+      <button type="submit" class="btn danger">确认删除</button>
+      <a href="javascript:history.back()" class="btn secondary">取消</a>
+    </div>
   </form>
 </div>
 {% endblock %}

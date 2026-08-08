@@ -1,0 +1,13 @@
+<div class="simple-file">
+  <div class="simple-file-status">
+    {% if widget.is_initial %}
+    <span class="sf-dot has"></span>
+    <span class="sf-text">已上传</span>
+    {% if widget.value %}<span class="sf-name" title="{{ widget.value.name }}">{{ widget.value.name }}</span>{% endif %}
+    {% else %}
+    <span class="sf-dot none"></span>
+    <span class="sf-text">未上传</span>
+    {% endif %}
+  </div>
+  <input type="{{ widget.type }}" name="{{ widget.name }}"{% include "django/forms/widgets/attrs.html" %}>
+</div>

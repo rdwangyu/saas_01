@@ -2,29 +2,37 @@
 {% block page_title %}项目进度{% endblock %}
 {% block content %}
 <div class="toolbar">
-  <div></div>
-  <a href="{% url 'dashboard:project_create' %}" class="btn">新增项目</a>
+  <form class="search-box" method="get">
+    <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="搜索项目名称、地址…">
+    <button type="submit" class="btn secondary sm">搜索</button>
+    {% if request.GET.q %}<a href="{% url 'dashboard:project_list' %}" class="btn secondary sm">清除</a>{% endif %}
+  </form>
+  <a href="{% url 'dashboard:project_create' %}" class="btn">＋ 新增项目</a>
 </div>
 {% if projects %}
-<table class="list">
-  <tr>
-    <th>项目</th><th>客户</th><th>负责人</th><th>地址</th><th>当前进度</th><th>创建时间</th><th>操作</th>
-  </tr>
-  {% for p in projects %}
-  <tr>
-    <td><a href="{% url 'dashboard:project_update' p.pk %}">{{ p.project_name }}</a></td>
-    <td>{{ p.customer.name|default:"—" }}</td>
-    <td>{{ p.staff.name|default:"—" }}</td>
-    <td>{{ p.address }}</td>
-    <td>{{ p.current_stage_name }}</td>
-    <td>{{ p.created_at|date:"Y-m-d" }}</td>
-    <td>
-      <a class="btn secondary sm" href="{% url 'dashboard:project_update' p.pk %}">编辑</a>
-      <a class="btn danger sm" href="{% url 'dashboard:project_delete' p.pk %}">删除</a>
-    </td>
-  </tr>
-  {% endfor %}
-</table>
+<div class="table-card">
+  <table class="list">
+    <thead>
+      <tr><th>项目</th><th>客户</th><th>负责人</th><th>地址</th><th>当前进度</th><th>创建时间</th><th class="actions">操作</th></tr>
+    </thead>
+    <tbody>
+    {% for p in projects %}
+    <tr>
+      <td><a href="{% url 'dashboard:project_update' p.pk %}">{{ p.project_name }}</a></td>
+      <td>{{ p.customer.name|default:"—" }}</td>
+      <td>{{ p.staff.name|default:"—" }}</td>
+      <td>{{ p.address }}</td>
+      <td>{{ p.current_stage_name }}</td>
+      <td>{{ p.created_at|date:"Y-m-d" }}</td>
+      <td class="actions">
+        <a class="btn secondary sm" href="{% url 'dashboard:project_update' p.pk %}">编辑</a>
+        <a class="btn danger sm" href="{% url 'dashboard:project_delete' p.pk %}">删除</a>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
 {% include "dashboard/_pagination.html" with page_obj=page_obj %}
 {% else %}
 <div class="card empty">暂无项目，<a href="{% url 'dashboard:project_create' %}">新增一个</a>。</div>

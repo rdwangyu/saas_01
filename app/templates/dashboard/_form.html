@@ -17,7 +17,7 @@
     {% endif %}
     {% if field.errors %}{{ field.errors }}{% endif %}
   {% else %}
-    {{ field.label_tag }}{% if field.field.required %}<span class="req">*</span>{% endif %}
+    {{ field.label_tag }}
     {{ field }}
     {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
     {% if field.errors %}{{ field.errors }}{% endif %}

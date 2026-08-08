@@ -1,5 +1,6 @@
 {% if is_paginated %}
 <div class="pagination">
+  <span class="pg-count">共 {{ page_obj.paginator.count }} 条</span>
   {% if page_obj.has_previous %}
     <a href="?{% if request.GET.q %}q={{ request.GET.q|urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">上一页</a>
   {% endif %}

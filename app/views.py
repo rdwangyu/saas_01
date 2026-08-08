@@ -266,7 +266,11 @@ class CaseListView(CompanyScopedViewMixin, ListView):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        return super().get_queryset().select_related("company")
+        qs = super().get_queryset().select_related("company")
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(Q(title__icontains=q) | Q(style__icontains=q))
+        return qs
 
 
 class CaseCreateView(CompanyScopedViewMixin, CreateView):
@@ -313,7 +317,11 @@ class ProjectListView(CompanyScopedViewMixin, ListView):
     ordering = ["-created_at"]
 
     def get_queryset(self):
-        return super().get_queryset().select_related("customer", "staff").prefetch_related("stages")
+        qs = super().get_queryset().select_related("customer", "staff").prefetch_related("stages")
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(Q(project_name__icontains=q) | Q(address__icontains=q))
+        return qs
 
 
 class ProjectCreateView(CompanyScopedViewMixin, CreateView):
@@ -417,9 +425,13 @@ class StaffListView(CompanyScopedViewMixin, ListView):
     model = Staff
     template_name = "dashboard/staff_list.html"
     context_object_name = "staff_list"
+    paginate_by = 20
 
     def get_queryset(self):
-        qs = super().get_queryset()  # 已按本公司过滤
+        qs = super().get_queryset()
+        q = self.request.GET.get("q", "").strip()
+        if q:
+            qs = qs.filter(Q(name__icontains=q) | Q(phone__icontains=q) | Q(email__icontains=q))
         return qs.select_related("company").order_by("-is_active", "name")
 
 

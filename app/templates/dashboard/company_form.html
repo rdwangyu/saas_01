@@ -2,10 +2,13 @@
 {% block page_title %}公司信息{% endblock %}
 {% block content %}
 <div class="fieldset">
+  <h3>公司信息</h3>
   <form method="post" enctype="multipart/form-data" class="form-box">
     {% csrf_token %}
     {% include "dashboard/_form.html" %}
-    <button type="submit" class="btn">保存</button>
+    <div class="form-actions">
+      <button type="submit" class="btn">保存</button>
+    </div>
   </form>
 </div>
 {% endblock %}

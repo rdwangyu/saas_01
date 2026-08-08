@@ -12,6 +12,8 @@ from django.forms.formsets import DELETION_FIELD_NAME
 from django.forms.models import BaseInlineFormSet
 from django.utils import timezone
 
+from .widgets import SimpleFileInput
+
 from .models import (
     Case,
     Company,
@@ -33,7 +35,7 @@ def get_current_staff(request):
     return Staff.objects.filter(pk=staff_id, is_active=True).first()
 
 
-class MultipleFileInput(forms.ClearableFileInput):
+class MultipleFileInput(SimpleFileInput):
     allow_multiple_selected = True
 
 
@@ -58,6 +60,8 @@ class MultipleFileField(forms.FileField):
 
 class BaseDashboardForm(forms.ModelForm):
     """Dashboard 表单基类：透传 request，供 __init__ 里读取当前员工。"""
+
+    required_css_class = "required"
 
     def __init__(self, *args, request=None, **kwargs):
         self.request = request
@@ -117,7 +121,7 @@ class CompanyForm(BaseDashboardForm):
             "address",
             "established_date",
         ]
-        widgets = {"logo": forms.FileInput(attrs={"accept": "image/*"})}
+        widgets = {"logo": SimpleFileInput(attrs={"accept": "image/*"})}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -138,8 +142,8 @@ class CaseForm(BaseDashboardForm):
         model = Case
         fields = ["title", "cover", "video", "description", "style", "area", "budget"]
         widgets = {
-            "cover": forms.FileInput(attrs={"accept": "image/*"}),
-            "video": forms.FileInput(attrs={"accept": "video/*"}),
+            "cover": SimpleFileInput(attrs={"accept": "image/*"}),
+            "video": SimpleFileInput(attrs={"accept": "video/*"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -224,7 +228,7 @@ class ProjectStageForm(forms.ModelForm):
     class Meta:
         model = ProjectStage
         fields = ["name", "image_0", "image_1", "image_2", "description"]
-        widgets = {f"image_{i}": forms.FileInput(attrs={"accept": "image/*"}) for i in range(3)}
+        widgets = {f"image_{i}": SimpleFileInput(attrs={"accept": "image/*"}) for i in range(3)}
 
 
 class StageInlineFormSet(BaseInlineFormSet):

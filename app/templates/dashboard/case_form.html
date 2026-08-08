@@ -2,11 +2,14 @@
 {% block page_title %}{% if form.instance.pk %}编辑案例{% else %}新增案例{% endif %}{% endblock %}
 {% block content %}
 <div class="fieldset">
+  <h3>案例信息</h3>
   <form method="post" enctype="multipart/form-data" class="form-box">
     {% csrf_token %}
     {% include "dashboard/_form.html" %}
-    <button type="submit" class="btn">保存</button>
-    <a href="{% url 'dashboard:case_list' %}" class="btn secondary">取消</a>
+    <div class="form-actions">
+      <button type="submit" class="btn">保存</button>
+      <a href="{% url 'dashboard:case_list' %}" class="btn secondary">取消</a>
+    </div>
   </form>
 </div>
 {% endblock %}

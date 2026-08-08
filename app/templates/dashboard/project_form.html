@@ -1,11 +1,15 @@
 {% extends "dashboard/base.html" %}
 {% block page_title %}{% if form.instance.pk %}编辑项目{% else %}新增项目{% endif %}{% endblock %}
 {% block content %}
-<div class="fieldset">
-  <form method="post" enctype="multipart/form-data" class="form-box">
-    {% csrf_token %}
-    {% include "dashboard/_form.html" %}
+<form method="post" enctype="multipart/form-data" class="form-box">
+  {% csrf_token %}
 
+  <div class="fieldset">
+    <h3>项目信息</h3>
+    {% include "dashboard/_form.html" %}
+  </div>
+
+  <div class="fieldset">
     <h3>项目阶段</h3>
     {{ stage_formset.management_form }}
     <div class="stage-formset">
@@ -35,9 +39,11 @@
     {% if stage_formset.non_form_errors %}
     <ul class="errorlist">{{ stage_formset.non_form_errors }}</ul>
     {% endif %}
+  </div>
 
+  <div class="form-actions">
     <button type="submit" class="btn">保存</button>
     <a href="{% url 'dashboard:project_list' %}" class="btn secondary">取消</a>
-  </form>
-</div>
+  </div>
+</form>
 {% endblock %}

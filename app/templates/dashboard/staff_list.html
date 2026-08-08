@@ -2,27 +2,37 @@
 {% block page_title %}员工管理{% endblock %}
 {% block content %}
 <div class="toolbar">
-  <div></div>
-  <a href="{% url 'dashboard:staff_create' %}" class="btn">新增员工</a>
+  <form class="search-box" method="get">
+    <input type="text" name="q" value="{{ request.GET.q|default:'' }}" placeholder="搜索姓名、电话、邮箱…">
+    <button type="submit" class="btn secondary sm">搜索</button>
+    {% if request.GET.q %}<a href="{% url 'dashboard:staff_list' %}" class="btn secondary sm">清除</a>{% endif %}
+  </form>
+  <a href="{% url 'dashboard:staff_create' %}" class="btn">＋ 新增员工</a>
 </div>
 {% if staff_list %}
-<table class="list">
-  <tr>
-    <th>用户名</th><th>姓名</th><th>电话</th><th>邮箱</th><th>公司</th><th>状态</th><th>操作</th>
-  </tr>
-  {% for s in staff_list %}
-  <tr>
-    <td><a href="{% url 'dashboard:staff_update' s.pk %}">{{ s.name }}</a></td>
-    <td>{{ s.name|default:"—" }}</td>
-    <td>{{ s.phone|default:"—" }}</td>
-    <td>{{ s.email|default:"—" }}</td>
-    <td>{{ s.company.name }}</td>
-    <td>{% if s.is_active %}<span class="badge active">启用</span>{% else %}<span class="badge inactive">停用</span>{% endif %}</td>
-    <td><a class="btn secondary sm" href="{% url 'dashboard:staff_update' s.pk %}">编辑</a></td>
-  </tr>
-  {% endfor %}
-</table>
+<div class="table-card">
+  <table class="list">
+    <thead>
+      <tr><th>姓名</th><th>电话</th><th>邮箱</th><th>公司</th><th>状态</th><th class="actions">操作</th></tr>
+    </thead>
+    <tbody>
+    {% for s in staff_list %}
+    <tr>
+      <td><a href="{% url 'dashboard:staff_update' s.pk %}">{{ s.name }}</a></td>
+      <td>{{ s.phone|default:"—" }}</td>
+      <td>{{ s.email|default:"—" }}</td>
+      <td>{{ s.company.name }}</td>
+      <td>{% if s.is_active %}<span class="badge active">启用</span>{% else %}<span class="badge inactive">停用</span>{% endif %}</td>
+      <td class="actions"><a class="btn secondary sm" href="{% url 'dashboard:staff_update' s.pk %}">编辑</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% if is_paginated %}
+{% include "dashboard/_pagination.html" with page_obj=page_obj %}
+{% endif %}
 {% else %}
-<div class="card empty">暂无员工。</div>
+<div class="card empty">暂无员工，<a href="{% url 'dashboard:staff_create' %}">新增一位</a>。</div>
 {% endif %}
 {% endblock %}

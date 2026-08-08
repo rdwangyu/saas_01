@@ -9,6 +9,42 @@
       color: #dc2626;
       font-weight: bold;
   }
+
+  /* 自定义文件上传控件（SimpleFileInput） */
+  .simple-file { display: block; }
+  .simple-file .simple-file-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      margin-bottom: 6px;
+      line-height: 1;
+  }
+  .simple-file .sf-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      flex-shrink: 0;
+  }
+  .simple-file .sf-dot.has { background: #059669; }
+  .simple-file .sf-dot.none { background: #cbd5e1; }
+  .simple-file .sf-text { color: #374151; }
+  .simple-file .sf-name {
+      color: #6b7280;
+      font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 320px;
+      background: #f4f4f5;
+      border-radius: 3px;
+      padding: 2px 6px;
+  }
+  .simple-file input[type="file"] {
+      max-width: 100%;
+      margin-top: 2px;
+  }
 </style>
 {% endblock %}
 

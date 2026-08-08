@@ -5,28 +5,33 @@
   <div class="card empty">该账号未关联公司，无法使用本后台。请使用系统后台 <a href="/admin/">/admin/</a>。</div>
 {% else %}
   <div class="stat-grid">
-    <div class="stat-card"><div class="num">{{ case_count }}</div><div class="label">案例</div></div>
-    <div class="stat-card"><div class="num">{{ project_count }}</div><div class="label">项目</div></div>
-    <div class="stat-card"><div class="num">{{ customer_count }}</div><div class="label">客户</div></div>
-    <div class="stat-card"><div class="num">{{ staff_count }}</div><div class="label">员工</div></div>
+    <div class="stat-card"><div class="label">案例</div><div class="num">{{ case_count }}</div></div>
+    <div class="stat-card"><div class="label">项目</div><div class="num">{{ project_count }}</div></div>
+    <div class="stat-card"><div class="label">客户</div><div class="num">{{ customer_count }}</div></div>
+    <div class="stat-card"><div class="label">员工</div><div class="num">{{ staff_count }}</div></div>
   </div>
+
   <div class="card">
-    <h3 style="margin-top:0">{{ company.name }} · 最近项目</h3>
+    <h3>{{ company.name }} · 最近项目</h3>
     {% if recent_projects %}
-    <table class="list">
-      <tr>
-        <th>项目</th><th>客户</th><th>负责人</th><th>地址</th><th>创建时间</th>
-      </tr>
-      {% for p in recent_projects %}
-      <tr>
-        <td><a href="{% url 'dashboard:project_update' p.pk %}">{{ p.project_name }}</a></td>
-        <td>{{ p.customer.name|default:"—" }}</td>
-        <td>{{ p.staff.name|default:"—" }}</td>
-        <td>{{ p.address }}</td>
-        <td>{{ p.created_at|date:"Y-m-d" }}</td>
-      </tr>
-      {% endfor %}
-    </table>
+    <div class="table-card">
+      <table class="list">
+        <thead>
+          <tr><th>项目</th><th>客户</th><th>负责人</th><th>地址</th><th>创建时间</th></tr>
+        </thead>
+        <tbody>
+        {% for p in recent_projects %}
+        <tr>
+          <td><a href="{% url 'dashboard:project_update' p.pk %}">{{ p.project_name }}</a></td>
+          <td>{{ p.customer.name|default:"—" }}</td>
+          <td>{{ p.staff.name|default:"—" }}</td>
+          <td>{{ p.address }}</td>
+          <td>{{ p.created_at|date:"Y-m-d" }}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
     {% else %}
     <div class="empty">暂无项目，去 <a href="{% url 'dashboard:project_create' %}">新建项目</a>。</div>
     {% endif %}
