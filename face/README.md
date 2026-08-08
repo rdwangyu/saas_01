@@ -1,30 +1,39 @@
 # 云序效果图 · 微信小程序
 
-基于 `../app`（Django + DRF + JWT）后台生成的微信小程序，当前包含四个模块：
+基于 `../app`（Django + DRF）后台的前台小程序。客户用「手机号 + 验证码」登录，进入公司后可查看公司简介、案例与本人项目进度。
 
-| 模块 | Tab | 页面 | 后端接口 |
+## 功能与接口对照
+
+| 功能 | 页面 | 后端接口 | 鉴权 |
 | --- | --- | --- | --- |
-| 公司简介 | 1 | `pages/company/` | `GET /api/companies/` |
-| 案例 | 2 | `pages/cases/`、`pages/case-detail/` | `GET /api/cases/`、`GET /api/cases/{id}/` |
-| 项目进度 | 3 | `pages/projects/`、`pages/project-detail/` | `GET /api/projects/`、`GET /api/projects/{id}/` |
-| 用户管理 | 4 | `pages/users/` | `GET/POST /api/users/`、`PATCH/DELETE /api/users/{id}/`、`GET /api/me/` |
+| 进入公司（输入公司 ID） | `pages/index/` | `GET /api/public/companies/{id}/` | 公开 |
+| 公司简介 | `pages/company/` | `GET /api/public/companies/{id}/` | 公开 |
+| 案例列表 | `pages/cases/` | `GET /api/public/cases/?company={id}` | 公开 |
+| 案例详情 | `pages/case-detail/` | `GET /api/public/cases/{id}/` | 公开 |
+| 发送验证码 | `pages/login/` | `POST /api/customer/send-code/` | 公开 |
+| 客户登录 | `pages/login/` | `POST /api/customer/login/` | 公开 |
+| 我的信息 | `pages/users/` | `GET /api/customer/me/` | 客户 token |
+| 我的项目列表 | `pages/projects/` | `GET /api/customer/projects/?company={id}` | 客户 token |
+| 项目进度详情 | `pages/project-detail/` | `GET /api/customer/projects/{id}/` | 客户 token |
 
-另有 `pages/login/` 登录页（`POST /api/auth/login/`），所有接口均需 JWT 鉴权。
+- 案例/项目列表为分页返回（`{count, next, previous, results}`），列表页支持上拉加载更多与下拉刷新
+- 公开接口（公司/案例）免登录；客户接口需登录后在请求头携带 `Authorization: Bearer <customer_token>`
+- 登录手机号必须是后台 `Customer` 表中已登记的手机号，未登记会返回「该手机号未登记」
 
 ## 目录结构
 
 ```
 src/
-├── app.js                  # 全局入口：已登录自动进入首页
+├── app.js                  # 全局入口：进入公司 ID 缓存、客户信息、登录后跳转
 ├── app.json                # 页面路由 + tabBar 配置
-├── app.wxss                # 全局样式（卡片/按钮/弹窗等）
+├── app.wxss                # 全局样式（卡片/按钮/渐变页/登录引导等）
 ├── config.js               # BASE_URL 等配置（改这里切换环境）
 ├── utils/
-│   ├── request.js          # 请求封装：自动携带 token、401 自动刷新并重试
+│   ├── request.js          # 请求封装：自动携带 customer_token，401 时清除登录态
 │   └── util.js             # 日期/金额/媒体地址格式化
 ├── components/empty/       # 空状态组件
 ├── pages/                  # 页面
-└── images/tabbar/          # tabBar 图标（scripts/gen_tabbar_icons.ps1 可重新生成）
+└── images/tabbar/          # tabBar 图标
 ```
 
 ## 运行步骤
@@ -32,7 +41,7 @@ src/
 1. 启动 Django 后端：`python manage.py runserver 0.0.0.0:8000`
 2. 打开微信开发者工具，导入本目录（`face/src`），AppID 已在 `project.config.json` 配置（wx978f49a670b0aa59）
 3. 开发者工具 → 详情 → 本地设置 → 勾选「不校验合法域名、web-view（业务域名）、TLS 版本以及 HTTPS 证书」
-4. 登录后台创建的公司管理员账号即可使用
+4. 在后台 `Customer` 表中登记测试客户的手机号，即可在小程序登录
 
 ## 环境切换
 
@@ -42,7 +51,5 @@ src/
 
 ## 说明
 
-- 后端列表接口为分页返回（`{count, next, previous, results}`），列表页支持上拉加载更多与下拉刷新
 - 图片/视频地址为阿里云 OSS 完整 URL；若后端返回相对路径，`utils/util.js` 的 `absUrl()` 会自动拼接 `MEDIA_BASE`
-- 用户管理支持：新增用户、删除用户（不能删除自己）、修改当前账号密码、退出登录
-- 后端 `app/serializers.py` 的 `UserSerializer` 已补充 `password` 字段与哈希逻辑（`update()` 中 `set_password`），使「修改密码」接口可用；如已部署旧版本请同步更新
+- 后端 `SendCodeView` 在测试模式（`SMS_TEST_MODE=True`）下不真正发短信，验证码打印到日志并随响应返回，便于联调

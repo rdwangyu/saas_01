@@ -176,64 +176,6 @@ page {
   border: none;
 }
 
-/* 弹窗 */
-.modal-mask {
-  position: fixed;
-  left: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(17, 24, 39, 0.5);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.modal {
-  width: 600rpx;
-  background: #ffffff;
-  border-radius: 24rpx;
-  padding: 40rpx 36rpx 32rpx;
-  box-sizing: border-box;
-}
-.modal-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  text-align: center;
-  margin-bottom: 32rpx;
-}
-.modal-input {
-  height: 84rpx;
-  background: #f5f7fa;
-  border-radius: 12rpx;
-  padding: 0 24rpx;
-  margin-bottom: 20rpx;
-  font-size: 28rpx;
-}
-.modal-btns {
-  display: flex;
-  margin-top: 24rpx;
-}
-.modal-btn {
-  flex: 1;
-  height: 80rpx;
-  line-height: 80rpx;
-  text-align: center;
-  border-radius: 40rpx;
-  font-size: 30rpx;
-  background: #f3f4f6;
-  color: #374151;
-  margin: 0 10rpx;
-  padding: 0;
-}
-.modal-btn::after {
-  border: none;
-}
-.modal-btn-primary {
-  background: var(--primary, #3a7bfd);
-  color: #ffffff;
-}
-
 /* ============ 登录 / 入口页通用样式 ============
  * 客户登录页（pages/login）与首页输入公司ID（pages/index）
  * 共用同一套「渐变背景 + 玻璃卡片」布局，保证风格一致。

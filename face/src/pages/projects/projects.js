@@ -1,8 +1,6 @@
 const { request, getCustomerToken } = require('../../utils/request')
 const { formatDate } = require('../../utils/util')
 
-const PAGE_SIZE = 10
-
 Page({
   data: {
     list: [],
@@ -45,7 +43,7 @@ Page({
     const page = reset ? 1 : this.data.page + 1
     this.setData({ loading: true, error: '' })
     try {
-      const data = await request(`/customer/projects/?company=${companyId}&page=${page}&page_size=${PAGE_SIZE}`)
+      const data = await request(`/customer/projects/?company=${companyId}&page=${page}`)
       const items = (data.results || []).map((item) => ({
         ...item,
         createdText: formatDate(item.created_at),

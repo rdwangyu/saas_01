@@ -1,8 +1,6 @@
 const { request } = require('../../utils/request')
 const { absUrl, formatDate, formatBudget } = require('../../utils/util')
 
-const PAGE_SIZE = 10
-
 Page({
   data: {
     list: [],
@@ -39,7 +37,7 @@ Page({
     const page = reset ? 1 : this.data.page + 1
     this.setData({ loading: true, error: '' })
     try {
-      const data = await request(`/public/cases/?company=${companyId}&page=${page}&page_size=${PAGE_SIZE}`)
+      const data = await request(`/public/cases/?company=${companyId}&page=${page}`)
       const items = (data.results || []).map((item) => ({
         ...item,
         cover: absUrl(item.cover),
