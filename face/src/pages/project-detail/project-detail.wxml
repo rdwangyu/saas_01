@@ -1,13 +1,4 @@
-<view class="page" wx:if="{{needLogin}}">
-  <view class="login-gate">
-    <view class="login-gate-icon">🔐</view>
-    <view class="login-gate-title">请先登录</view>
-    <view class="login-gate-desc">登录后即可查看项目进度</view>
-    <button class="login-gate-btn" bindtap="goLogin">登录</button>
-  </view>
-</view>
-
-<view class="page" wx:elif="{{detail}}">
+<view class="page" wx:if="{{detail}}">
   <!-- 项目概要 -->
   <view class="card head-card">
     <view class="head-name">{{detail.project_name}}</view>
@@ -19,6 +10,10 @@
 
   <!-- 项目信息 -->
   <view class="card">
+    <view class="info-row">
+      <view class="info-label">订单编号</view>
+      <view class="info-value">{{detail.project_no}}</view>
+    </view>
     <view class="info-row">
       <view class="info-label">对接人</view>
       <view class="info-value">{{detail.staff_name || '未分配'}}</view>
@@ -76,4 +71,10 @@
   <empty wx:else text="该项目暂无阶段记录" icon="🗓" />
 </view>
 
-<empty wx:elif="{{error}}" text="{{error}}" icon="⚠️" showAction="{{true}}" actionText="返回" bind:action="goBack" />
+<view class="page" wx:elif="{{error}}">
+  <view class="login-gate">
+    <view class="login-gate-icon">📦</view>
+    <view class="login-gate-title">{{error}}</view>
+    <button class="login-gate-btn" bindtap="goBind">去绑定订单</button>
+  </view>
+</view>

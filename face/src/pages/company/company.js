@@ -6,13 +6,12 @@ Page({
     company: null,
     loading: true,
     error: '',
-    noCompany: false,
   },
 
   onShow() {
-    const id = getApp().globalData.currentCompanyId
+    const id = getApp().getCurrentCompanyId()
     if (!id) {
-      this.setData({ company: null, loading: false, noCompany: true, error: '' })
+      this.setData({ company: null, loading: false, error: '' })
       return
     }
     this.loadCompany()
@@ -23,9 +22,9 @@ Page({
   },
 
   async loadCompany() {
-    const id = getApp().globalData.currentCompanyId
+    const id = getApp().getCurrentCompanyId()
     if (!id) return
-    this.setData({ loading: true, error: '', noCompany: false })
+    this.setData({ loading: true, error: '' })
     try {
       const item = await request(`/public/companies/${id}/`)
       this.setData({
@@ -47,9 +46,5 @@ Page({
     const phone = e.currentTarget.dataset.phone
     if (!phone) return
     wx.makePhoneCall({ phoneNumber: String(phone) })
-  },
-
-  goIndex() {
-    wx.reLaunch({ url: '/pages/index/index' })
   },
 })

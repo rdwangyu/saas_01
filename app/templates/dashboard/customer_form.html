@@ -1,0 +1,14 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}{% if form.instance.pk %}编辑客户{% else %}新增客户{% endif %}{% endblock %}
+{% block content %}
+<div class="fieldset">
+  <form method="post" class="form-box">
+    {% csrf_token %}
+    {% include "dashboard/_form.html" %}
+    <div class="form-actions">
+      <button type="submit" class="btn">保存</button>
+      <a href="{% url 'dashboard:customer_list' %}" class="btn secondary">取消</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

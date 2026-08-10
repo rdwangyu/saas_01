@@ -32,6 +32,7 @@
       <div class="page-title">{% block page_title %}{% endblock %}</div>
       <div class="user-box">
         <span class="user-name">{{ current_staff.name }}</span>
+        <a class="user-link" href="{% url 'dashboard:staff_password' %}">修改密码</a>
         <form method="post" action="{% url 'dashboard:logout' %}">
           {% csrf_token %}
           <button type="submit" class="logout-btn">退出登录</button>

@@ -4,10 +4,9 @@ from django.urls import path
 
 from . import views
 
-# /dashboard/ 后台（员工验证码登录的租户后台）
+# /dashboard/ 后台（员工手机号+密码登录的租户后台）
 dashboard_patterns = [
     path("login/", views.DashboardLoginView.as_view(), name="login"),
-    path("send-code/", views.DashboardSendCodeView.as_view(), name="send_code"),
     path("logout/", views.DashboardLogoutView.as_view(), name="logout"),
     path("", views.DashboardIndexView.as_view(), name="index"),
     path("company/", views.CompanyUpdateView.as_view(), name="company"),
@@ -20,14 +19,25 @@ dashboard_patterns = [
     path("projects/<int:pk>/", views.ProjectUpdateView.as_view(), name="project_update"),
     path("projects/<int:pk>/delete/", views.ProjectDeleteView.as_view(), name="project_delete"),
     path("customers/", views.CustomerListView.as_view(), name="customer_list"),
-    path("customers/<int:pk>/", views.CustomerDetailView.as_view(), name="customer_detail"),
+    path("customers/new/", views.CustomerCreateView.as_view(), name="customer_create"),
+    path("customers/<int:pk>/", views.CustomerUpdateView.as_view(), name="customer_update"),
+    path(
+        "customers/<int:pk>/delete/",
+        views.CustomerDeleteView.as_view(),
+        name="customer_delete",
+    ),
+    path(
+        "customers/<int:pk>/detail/",
+        views.CustomerDetailView.as_view(),
+        name="customer_detail",
+    ),
     path("staff/", views.StaffListView.as_view(), name="staff_list"),
-    path("staff/new/", views.StaffCreateView.as_view(), name="staff_create"),
-    path("staff/<int:pk>/", views.StaffUpdateView.as_view(), name="staff_update"),
+    path("staff/password/", views.StaffPasswordChangeView.as_view(), name="staff_password"),
 ]
 
-# /api/ 前台（客户 + 公开 API）
+# /api/ 前台（公开 + 订单绑定 API）
 api_patterns = [
+    path("public/companies/", views.PublicCompanyList.as_view(), name="public-company-list"),
     path(
         "public/companies/<int:pk>/",
         views.PublicCompanyDetail.as_view(),
@@ -39,17 +49,5 @@ api_patterns = [
         views.PublicCaseDetail.as_view(),
         name="public-case-detail",
     ),
-    path("customer/send-code/", views.SendCodeView.as_view(), name="customer-send-code"),
-    path("customer/login/", views.CustomerLoginView.as_view(), name="customer-login"),
-    path("customer/me/", views.CustomerMeView.as_view(), name="customer-me"),
-    path(
-        "customer/projects/",
-        views.CustomerProjectListView.as_view(),
-        name="customer-project-list",
-    ),
-    path(
-        "customer/projects/<int:pk>/",
-        views.CustomerProjectDetailView.as_view(),
-        name="customer-project-detail",
-    ),
+    path("bind-project/", views.BindProjectView.as_view(), name="bind-project"),
 ]

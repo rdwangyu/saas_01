@@ -142,26 +142,27 @@ class CompanyAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
 
 @admin.register(Customer)
 class CustomerAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
-    """客户表：全局表，仅超级管理员维护。"""
+    """客户表：归属于公司，由各公司管理员维护。"""
 
     list_display = [
         "id",
         "name",
         "phone",
-        "address",
-        "company_names",
+        "company",
+        "contract",
         "project_count",
         "created_at",
     ]
     list_display_links = ["id", "name"]
-    search_fields = ["name", "phone", "address"]
+    list_filter = ["company"]
+    search_fields = ["name", "phone", "address", "contract", "company__name"]
     readonly_fields = ["created_at"]
 
     fieldsets = (
         (
             "基本信息",
             {
-                "fields": ("name", "phone", "address"),
+                "fields": ("company", "name", "phone", "address", "contract"),
             },
         ),
         (
@@ -172,26 +173,48 @@ class CustomerAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         ),
     )
 
-    def company_names(self, obj):
-        """客户与公司的关系通过项目体现，列出其项目所在公司。"""
-        names = set()
-        for p in obj.projects.select_related("company"):
-            if p.company:
-                names.add(p.company.name)
-        return "、".join(sorted(names)) or "—"
-
-    company_names.short_description = "所属公司（按项目）"
-
     def project_count(self, obj):
         return obj.projects.count()
 
     project_count.short_description = "项目数"
 
 
+class StaffAdminForm(forms.ModelForm):
+    """员工表单：密码用 password1/password2 录入并哈希保存，仅超管可创建/改密码。"""
+
+    password1 = forms.CharField(label="密码", widget=forms.PasswordInput, required=False)
+    password2 = forms.CharField(label="确认密码", widget=forms.PasswordInput, required=False)
+
+    class Meta:
+        model = Staff
+        fields = ["name", "phone", "email", "company", "role", "is_active"]
+
+    def clean(self):
+        cleaned = super().clean()
+        p1 = cleaned.get("password1")
+        p2 = cleaned.get("password2")
+        if p1 or p2:
+            if p1 != p2:
+                raise forms.ValidationError("两次输入的密码不一致。")
+        if not self.instance.pk and not p1:
+            raise forms.ValidationError("新建员工必须设置密码。")
+        return cleaned
+
+    def save(self, commit=True):
+        staff = super().save(commit=False)
+        p1 = self.cleaned_data.get("password1")
+        if p1:
+            staff.set_password(p1)
+        if commit:
+            staff.save()
+        return staff
+
+
 @admin.register(Staff)
 class StaffAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
-    """员工表（验证码登录，无密码）。"""
+    """员工表（手机号+密码登录）。仅超管创建员工、设置密码；员工可在后台自助改密。"""
 
+    form = StaffAdminForm
     list_display = [
         "name",
         "phone",
@@ -221,6 +244,13 @@ class StaffAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
             },
         ),
         (
+            "登录密码",
+            {
+                "fields": ("password1", "password2"),
+                "description": "新建员工必填；留空则不修改原密码。",
+            },
+        ),
+        (
             "状态",
             {
                 "fields": ("is_active", "created_at", "last_login"),
@@ -232,7 +262,6 @@ class StaffAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         return obj.get_role_display()
 
     role_display.short_description = "角色"
-
 
 
 @admin.register(Case)
@@ -288,13 +317,9 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         form = super().get_form(request, obj=obj, **kwargs)
 
         if "cover" in form.base_fields:
-            form.base_fields["cover"].widget = SimpleFileInput(
-                attrs={"accept": "image/*"}
-            )
+            form.base_fields["cover"].widget = SimpleFileInput(attrs={"accept": "image/*"})
         if "video" in form.base_fields:
-            form.base_fields["video"].widget = SimpleFileInput(
-                attrs={"accept": "video/*"}
-            )
+            form.base_fields["video"].widget = SimpleFileInput(attrs={"accept": "video/*"})
 
         return form
 
@@ -352,6 +377,7 @@ class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
     list_display_links = ["id", "project_name"]
     list_filter = ["company", "created_at"]
     search_fields = [
+        "project_no",
         "project_name",
         "address",
         "company__name",
@@ -367,7 +393,7 @@ class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         (
             "基本信息",
             {
-                "fields": ("company", "project_name", "address"),
+                "fields": ("company", "project_no", "project_name", "address"),
             },
         ),
         (
@@ -383,6 +409,21 @@ class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
             },
         ),
     )
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        # Django 6 不再设置 request._obj_，这里补上供 formfield_for_foreignkey 用
+        request._obj_ = obj
+        return super().get_form(request, obj=obj, change=change, **kwargs)
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # 编辑已有项目时，客户与负责人下拉只列该项目所属公司的，避免跨公司误选
+        obj = getattr(request, "_obj_", None)
+        if obj is not None:
+            if db_field.name == "customer":
+                kwargs["queryset"] = Customer.objects.filter(company_id=obj.company_id)
+            elif db_field.name == "staff":
+                kwargs["queryset"] = Staff.objects.filter(company_id=obj.company_id)
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         return (

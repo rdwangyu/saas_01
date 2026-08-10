@@ -1,6 +1,6 @@
 """公司管理员租户后台（/dashboard/）表单。
 
-员工用手机号+验证码登录，身份存 session['staff_id']；所有表单按当前员工所属公司隔离。
+员工用手机号+密码登录，身份存 session['staff_id']；所有表单按当前员工所属公司隔离。
 """
 
 from urllib.parse import unquote, urlparse
@@ -10,7 +10,6 @@ from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
 from django.forms.formsets import DELETION_FIELD_NAME
 from django.forms.models import BaseInlineFormSet
-from django.utils import timezone
 
 from .widgets import SimpleFileInput
 
@@ -20,7 +19,6 @@ from .models import (
     Customer,
     ProjectProgress,
     ProjectStage,
-    SmsCode,
     Staff,
     case_gallery_path,
 )
@@ -78,33 +76,20 @@ class BaseDashboardForm(forms.ModelForm):
 
 
 class DashboardLoginForm(forms.Form):
-    """员工验证码登录表单。"""
+    """员工手机号+密码登录表单。"""
 
     phone = forms.CharField(label="手机号", max_length=30)
-    code = forms.CharField(label="验证码", max_length=10)
+    password = forms.CharField(label="密码", widget=forms.PasswordInput)
 
     def clean(self):
         cleaned = super().clean()
         phone = (cleaned.get("phone") or "").strip()
-        code = (cleaned.get("code") or "").strip()
-        if not phone or not code:
+        password = cleaned.get("password")
+        if not phone or not password:
             return cleaned
-        sms = (
-            SmsCode.objects.filter(
-                phone=phone, code=code, purpose=SmsCode.Purpose.STAFF_LOGIN, used=False
-            )
-            .order_by("-created_at")
-            .first()
-        )
-        if not sms:
-            raise ValidationError("验证码错误，请重新输入。")
-        if (timezone.now() - sms.created_at).total_seconds() > 300:
-            raise ValidationError("验证码已过期，请重新获取。")
         staff = Staff.objects.filter(phone=phone, is_active=True).first()
-        if staff is None:
-            raise ValidationError("该手机号未登记为员工。")
-        sms.used = True
-        sms.save(update_fields=["used"])
+        if staff is None or not staff.check_password(password):
+            raise ValidationError("手机号或密码错误。")
         cleaned["staff"] = staff
         return cleaned
 
@@ -211,17 +196,27 @@ class CaseForm(BaseDashboardForm):
 class ProjectForm(BaseDashboardForm):
     class Meta:
         model = ProjectProgress
-        fields = ["project_name", "address", "customer", "staff"]
+        fields = ["project_no", "project_name", "address", "customer", "staff"]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         current = self._current_staff()
         if current and current.company_id:
+            # 客户与负责人均限定本公司
+            self.fields["customer"].queryset = Customer.objects.filter(
+                company_id=current.company_id
+            )
             self.fields["staff"].queryset = Staff.objects.filter(
                 company_id=current.company_id, is_active=True
             )
-        # 客户为全局表（仅超管维护），员工只读选择全部客户
-        self.fields["customer"].queryset = Customer.objects.all()
+        # 项目编号由管理员手动输入，必填
+        self.fields["project_no"].required = True
+
+
+class CustomerForm(BaseDashboardForm):
+    class Meta:
+        model = Customer
+        fields = ["name", "phone", "address", "contract"]
 
 
 class ProjectStageForm(forms.ModelForm):
@@ -252,33 +247,30 @@ StageFormSet = forms.inlineformset_factory(
 )
 
 
-class StaffCreateForm(BaseDashboardForm):
-    class Meta:
-        model = Staff
-        fields = ["name", "phone", "email", "role", "is_active"]
+class StaffPasswordForm(forms.Form):
+    """员工自助修改密码表单（只允许改自己的）。"""
 
-    def save(self, commit=True):
-        staff = super().save(commit=False)
-        current = self._current_staff()
-        if current and current.company_id:
-            staff.company = current.company
-        if commit:
-            staff.save()
-        return staff
+    old_password = forms.CharField(label="原密码", widget=forms.PasswordInput)
+    new_password1 = forms.CharField(label="新密码", widget=forms.PasswordInput)
+    new_password2 = forms.CharField(label="确认新密码", widget=forms.PasswordInput)
 
-
-class StaffEditForm(BaseDashboardForm):
-    class Meta:
-        model = Staff
-        fields = ["name", "phone", "email", "role", "is_active"]
+    def __init__(self, *args, staff=None, **kwargs):
+        self.staff = staff
+        super().__init__(*args, **kwargs)
 
     def clean(self):
         cleaned = super().clean()
-        current = self._current_staff()
-        if (
-            cleaned.get("is_active") is False
-            and current is not None
-            and self.instance.pk == current.pk
-        ):
-            raise ValidationError("不能停用当前登录的账号。")
+        old = cleaned.get("old_password")
+        if old and (self.staff is None or not self.staff.check_password(old)):
+            raise ValidationError("原密码不正确。")
+        p1 = cleaned.get("new_password1")
+        p2 = cleaned.get("new_password2")
+        if not p1:
+            raise ValidationError("请输入新密码。")
+        if p1 != p2:
+            raise ValidationError("两次输入的新密码不一致。")
         return cleaned
+
+    def save(self):
+        self.staff.set_password(self.cleaned_data["new_password1"])
+        self.staff.save(update_fields=["password"])

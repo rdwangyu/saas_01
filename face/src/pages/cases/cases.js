@@ -8,15 +8,9 @@ Page({
     hasMore: true,
     loading: false,
     error: '',
-    noCompany: false,
   },
 
   onShow() {
-    if (!getApp().globalData.currentCompanyId) {
-      this.setData({ noCompany: true, list: [] })
-      return
-    }
-    this.setData({ noCompany: false })
     this.loadList(true)
   },
 
@@ -31,7 +25,7 @@ Page({
   },
 
   async loadList(reset) {
-    const companyId = getApp().globalData.currentCompanyId
+    const companyId = getApp().getCurrentCompanyId()
     if (!companyId) return
     if (this.data.loading) return
     const page = reset ? 1 : this.data.page + 1
@@ -62,9 +56,5 @@ Page({
   goDetail(e) {
     const id = e.currentTarget.dataset.id
     wx.navigateTo({ url: `/pages/case-detail/case-detail?id=${id}` })
-  },
-
-  goIndex() {
-    wx.reLaunch({ url: '/pages/index/index' })
   },
 })

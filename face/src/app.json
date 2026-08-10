@@ -1,13 +1,11 @@
 {
   "pages": [
-    "pages/index/index",
     "pages/company/company",
     "pages/cases/cases",
     "pages/case-detail/case-detail",
     "pages/projects/projects",
     "pages/project-detail/project-detail",
-    "pages/users/users",
-    "pages/login/login"
+    "pages/users/users"
   ],
   "window": {
     "navigationBarTitleText": "云序效果图",

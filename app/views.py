@@ -1,19 +1,17 @@
-"""视图：/dashboard/ 后台（员工验证码登录 + 公司隔离）与 /api/ 前台（客户 + 公开）API。
+"""视图：/dashboard/ 后台（员工手机号+密码登录 + 公司隔离）与 /api/ 前台（公开 + 订单绑定）API。
 
-后台：员工用手机号+验证码登录，身份存 session['staff_id']；数据按当前员工所属公司隔离，
+后台：员工用手机号+密码登录，身份存 session['staff_id']；数据按当前员工所属公司隔离，
 有 status 的模型只显示 ACTIVE。删除语义：员工软删（status=INACTIVE）。
-前台：客户用手机号+验证码登录签发 CustomerToken，公开接口免登录。
+前台：公开只读接口 + 小程序凭订单编号绑定项目。
 """
 
-import random
-import secrets
-from datetime import timedelta
+import base64
+from urllib.parse import quote
 
-from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -27,8 +25,6 @@ from django.views.generic import (
     UpdateView,
 )
 from rest_framework import generics, permissions, status
-from rest_framework.authentication import BaseAuthentication
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -36,11 +32,11 @@ from .forms_dashboard import (
     BaseDashboardForm,
     CaseForm,
     CompanyForm,
+    CustomerForm,
     DashboardLoginForm,
     ProjectForm,
     StageFormSet,
-    StaffCreateForm,
-    StaffEditForm,
+    StaffPasswordForm,
     get_current_staff,
 )
 from .models import (
@@ -48,17 +44,15 @@ from .models import (
     CommonStatus,
     Company,
     Customer,
-    CustomerToken,
     ProjectProgress,
-    SmsCode,
     Staff,
 )
 from .serializers import (
     CaseSerializer,
     CompanySerializer,
-    CustomerSerializer,
     ProjectProgressSerializer,
 )
+from .wechat import WechatError, generate_company_code
 
 # ============================================================
 # 后台 dashboard（/dashboard/）
@@ -66,7 +60,7 @@ from .serializers import (
 
 
 class CompanyScopedViewMixin:
-    """租户后台基类：验证码登录 + 按当前员工所属公司隔离。"""
+    """租户后台基类：手机号+密码登录 + 按当前员工所属公司隔离。"""
 
     login_url = reverse_lazy("dashboard:login")
 
@@ -95,8 +89,12 @@ class CompanyScopedViewMixin:
         return obj
 
     def form_valid(self, form):
-        if hasattr(form.instance, "company"):
-            form.instance.company = self._current_staff().company
+        # 删除确认表单等无 instance，仅对 ModelForm 设置公司
+        # 注意：新对象 FK 未赋值时访问 instance.company 会抛异常，hasattr 返回 False，
+        # 因此用 company_id（普通整型属性）判断模型是否有该字段。
+        instance = getattr(form, "instance", None)
+        if instance is not None and hasattr(instance, "company_id"):
+            instance.company = self._current_staff().company
         return super().form_valid(form)
 
     def get_form_kwargs(self):
@@ -113,7 +111,7 @@ class CompanyScopedViewMixin:
 
 
 class DashboardLoginView(View):
-    """手机号 + 验证码登录，身份写 session['staff_id']。"""
+    """手机号 + 密码登录，身份写 session['staff_id']。"""
 
     template_name = "dashboard/login.html"
 
@@ -124,9 +122,7 @@ class DashboardLoginView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get(self, request):
-        ctx = {"form": DashboardLoginForm()}
-        ctx.update(self._debug_context())
-        return render(request, self.template_name, ctx)
+        return render(request, self.template_name, {"form": DashboardLoginForm()})
 
     def post(self, request):
         form = DashboardLoginForm(request.POST)
@@ -136,70 +132,7 @@ class DashboardLoginView(View):
             staff.last_login = timezone.now()
             staff.save(update_fields=["last_login"])
             return HttpResponseRedirect(reverse_lazy("dashboard:index"))
-        ctx = {"form": form}
-        ctx.update(self._debug_context())
-        return render(request, self.template_name, ctx)
-
-    def _debug_context(self):
-        """测试模式：把发送验证码时暂存的 debug_code 取出来展示在登录页。"""
-        session = self.request.session
-        ctx = {"debug_code": None, "debug_phone": None}
-        if session.get("debug_code"):
-            ctx["debug_code"] = session.pop("debug_code")
-            ctx["debug_phone"] = session.pop("debug_phone", None)
-        return ctx
-
-
-class DashboardSendCodeView(View):
-    """发送员工登录验证码（测试模式：验证码存 session 显示在登录页）。"""
-
-    def post(self, request):
-        phone = (request.POST.get("phone") or "").strip()
-        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest"
-
-        if not phone:
-            msg = "请输入手机号。"
-            if is_ajax:
-                return JsonResponse({"ok": False, "message": msg})
-            messages.error(request, msg)
-            return HttpResponseRedirect(reverse_lazy("dashboard:login"))
-
-        if not Staff.objects.filter(phone=phone, is_active=True).exists():
-            msg = "该手机号未登记为员工，请联系管理员。"
-            if is_ajax:
-                return JsonResponse({"ok": False, "message": msg})
-            messages.error(request, msg)
-            return HttpResponseRedirect(reverse_lazy("dashboard:login"))
-
-        last = (
-            SmsCode.objects.filter(phone=phone, purpose=SmsCode.Purpose.STAFF_LOGIN)
-            .order_by("-created_at")
-            .first()
-        )
-        if last and (timezone.now() - last.created_at).total_seconds() < 60:
-            msg = "发送过于频繁，请稍后再试。"
-            if is_ajax:
-                return JsonResponse({"ok": False, "message": msg})
-            messages.error(request, msg)
-            return HttpResponseRedirect(reverse_lazy("dashboard:login"))
-
-        code = f"{random.randint(0, 999999):06d}"
-        SmsCode.objects.create(phone=phone, code=code, purpose=SmsCode.Purpose.STAFF_LOGIN)
-        if getattr(settings, "SMS_TEST_MODE", True):
-            request.session["debug_code"] = code
-            request.session["debug_phone"] = phone
-            print(f"[SMS] 员工验证码: {code} -> {phone}")
-            msg = "验证码已发送（测试模式）。"
-            if is_ajax:
-                return JsonResponse({"ok": True, "message": msg, "debug_code": code})
-            messages.success(request, msg)
-        else:
-            msg = "验证码已发送。"
-            if is_ajax:
-                return JsonResponse({"ok": True, "message": msg})
-            messages.success(request, msg)
-
-        return HttpResponseRedirect(reverse_lazy("dashboard:login"))
+        return render(request, self.template_name, {"form": form})
 
 
 class DashboardLogoutView(View):
@@ -230,8 +163,8 @@ class DashboardIndexView(CompanyScopedViewMixin, TemplateView):
         ctx["project_count"] = ProjectProgress.objects.filter(
             company_id=cid, status=CommonStatus.ACTIVE
         ).count()
-        # 客户为全局表，与客户列表页范围一致
-        ctx["customer_count"] = Customer.objects.count()
+        # 客户归属本公司
+        ctx["customer_count"] = Customer.objects.filter(company_id=cid).count()
         ctx["staff_count"] = Staff.objects.filter(company_id=cid).count()
         ctx["recent_projects"] = (
             ProjectProgress.objects.filter(company_id=cid, status=CommonStatus.ACTIVE)
@@ -399,12 +332,48 @@ class CustomerListView(CompanyScopedViewMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        # 客户为全局表（仅超管维护），员工只读查看全部
-        qs = Customer.objects.all()
+        # 按当前员工所属公司过滤（CompanyScopedViewMixin 已按 company 过滤）
+        qs = super().get_queryset()
         q = self.request.GET.get("q", "").strip()
         if q:
             qs = qs.filter(Q(name__icontains=q) | Q(phone__icontains=q))
         return qs.order_by("-created_at")
+
+
+class CustomerCreateView(CompanyScopedViewMixin, CreateView):
+    model = Customer
+    form_class = CustomerForm
+    template_name = "dashboard/customer_form.html"
+    success_url = reverse_lazy("dashboard:customer_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "客户已创建")
+        return super().form_valid(form)
+
+
+class CustomerUpdateView(CompanyScopedViewMixin, UpdateView):
+    model = Customer
+    form_class = CustomerForm
+    template_name = "dashboard/customer_form.html"
+
+    def get_success_url(self):
+        return reverse_lazy("dashboard:customer_list")
+
+    def form_valid(self, form):
+        messages.success(self.request, "客户已更新")
+        return super().form_valid(form)
+
+
+class CustomerDeleteView(CompanyScopedViewMixin, DeleteView):
+    model = Customer
+    template_name = "dashboard/confirm_delete.html"
+    success_url = reverse_lazy("dashboard:customer_list")
+
+    def delete(self, request, *args, **kwargs):
+        obj = self.get_object()
+        obj.delete()
+        messages.success(request, "客户已删除")
+        return HttpResponseRedirect(self.get_success_url())
 
 
 class CustomerDetailView(CompanyScopedViewMixin, DetailView):
@@ -415,7 +384,7 @@ class CustomerDetailView(CompanyScopedViewMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         qs = self.object.projects.select_related("company", "staff").order_by("-created_at")
-        # 客户为全局表，但关联项目只展示本公司的，避免泄露他租户项目
+        # 客户归属本公司，关联项目只展示本公司的
         qs = qs.filter(company_id=self._current_staff().company_id)
         ctx["projects"] = qs
         return ctx
@@ -435,33 +404,39 @@ class StaffListView(CompanyScopedViewMixin, ListView):
         return qs.select_related("company").order_by("-is_active", "name")
 
 
-class StaffCreateView(CompanyScopedViewMixin, CreateView):
-    model = Staff
-    form_class = StaffCreateForm
-    template_name = "dashboard/staff_form.html"
-    success_url = reverse_lazy("dashboard:staff_list")
+class StaffPasswordChangeView(CompanyScopedViewMixin, View):
+    """员工自助修改自己的密码。"""
 
-    def form_valid(self, form):
-        messages.success(self.request, "员工已创建")
-        return super().form_valid(form)
+    template_name = "dashboard/staff_password.html"
 
+    def get(self, request):
+        form = StaffPasswordForm(staff=self._current_staff())
+        return render(request, self.template_name, {"form": form})
 
-class StaffUpdateView(CompanyScopedViewMixin, UpdateView):
-    model = Staff
-    form_class = StaffEditForm
-    template_name = "dashboard/staff_form.html"
-
-    def get_success_url(self):
-        return reverse_lazy("dashboard:staff_update", kwargs={"pk": self.object.pk})
-
-    def form_valid(self, form):
-        messages.success(self.request, "员工已更新")
-        return super().form_valid(form)
+    def post(self, request):
+        form = StaffPasswordForm(request.POST, staff=self._current_staff())
+        if form.is_valid():
+            form.save()
+            messages.success(request, "密码已修改")
+            return HttpResponseRedirect(reverse_lazy("dashboard:index"))
+        return render(request, self.template_name, {"form": form})
 
 
 # ============================================================
 # 前台 API（/api/）
 # ============================================================
+
+
+class PublicCompanyList(generics.ListAPIView):
+    """公司列表（启用的公司，免登录只读，供扫码校验/选择公司）"""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+    serializer_class = CompanySerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return Company.objects.filter(status=CommonStatus.ACTIVE)
 
 
 class PublicCompanyDetail(generics.RetrieveAPIView):
@@ -498,157 +473,58 @@ class PublicCaseDetail(generics.RetrieveAPIView):
     queryset = Case.objects.filter(status=CommonStatus.ACTIVE)
 
 
-class CustomerAuthentication(BaseAuthentication):
-    """用 CustomerToken 认证客户。"""
-
-    keyword = "Bearer"
-
-    def authenticate(self, request):
-        auth = request.META.get("HTTP_AUTHORIZATION", "")
-        if not auth:
-            return None
-        try:
-            parts = auth.split()
-            if len(parts) != 2 or parts[0].lower() != "bearer":
-                return None
-            key = parts[1]
-        except Exception:
-            return None
-        try:
-            token = CustomerToken.objects.select_related("customer").get(
-                key=key,
-                expires_at__gt=timezone.now(),
-            )
-        except CustomerToken.DoesNotExist:
-            raise AuthenticationFailed("登录已失效，请重新登录")
-        return (token.customer, token)
-
-
-class IsCustomer(permissions.BasePermission):
-    """仅已认证客户可访问。"""
-
-    def has_permission(self, request, view):
-        return isinstance(request.user, Customer)
-
-
-class SendCodeView(APIView):
-    """发送客户短信验证码（测试模式：验证码打印日志并随响应返回）。"""
+class BindProjectView(APIView):
+    """小程序订单绑定：凭项目编号返回项目进度 + 客户 + 公司信息。"""
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        phone = (request.data.get("phone") or "").strip()
-        if not phone:
-            return Response({"detail": "请输入手机号"}, status=status.HTTP_400_BAD_REQUEST)
-        if not Customer.objects.filter(phone=phone).exists():
-            return Response(
-                {"detail": "该手机号未登记，请联系公司工作人员"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        last = (
-            SmsCode.objects.filter(phone=phone, purpose=SmsCode.Purpose.CUSTOMER_LOGIN)
-            .order_by("-created_at")
-            .first()
-        )
-        if last and (timezone.now() - last.created_at).total_seconds() < 60:
-            return Response(
-                {"detail": "发送过于频繁，请稍后再试"},
-                status=status.HTTP_429_TOO_MANY_REQUESTS,
-            )
-        code = f"{random.randint(0, 999999):06d}"
-        SmsCode.objects.create(phone=phone, code=code, purpose=SmsCode.Purpose.CUSTOMER_LOGIN)
-        if getattr(settings, "SMS_TEST_MODE", True):
-            # 测试模式：不真正发短信，验证码打印到日志并返回，方便联调
-            print(f"[SMS] 验证码: {code} -> {phone}")
-            return Response({"detail": "验证码已发送（测试模式）", "debug_code": code})
-        # TODO: 接入阿里云短信后在此处调用发送
-        return Response({"detail": "验证码已发送"})
-
-
-class CustomerLoginView(APIView):
-    """手机号 + 验证码 登录，签发客户 token。"""
-
-    authentication_classes = []
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request):
-        phone = (request.data.get("phone") or "").strip()
-        code = (request.data.get("code") or "").strip()
-        if not phone or not code:
-            return Response({"detail": "请输入手机号和验证码"}, status=status.HTTP_400_BAD_REQUEST)
-        sms = (
-            SmsCode.objects.filter(
-                phone=phone, code=code, used=False, purpose=SmsCode.Purpose.CUSTOMER_LOGIN
-            )
-            .order_by("-created_at")
-            .first()
-        )
-        if not sms:
-            return Response({"detail": "验证码错误或已过期"}, status=status.HTTP_400_BAD_REQUEST)
-        if (timezone.now() - sms.created_at).total_seconds() > 300:
-            return Response(
-                {"detail": "验证码已过期，请重新获取"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        project_no = (request.data.get("project_no") or "").strip()
+        if not project_no:
+            return Response({"detail": "请输入订单编号"}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            customer = Customer.objects.get(phone=phone)
-        except Customer.DoesNotExist:
-            return Response(
-                {"detail": "该手机号未登记，请联系公司工作人员"},
-                status=status.HTTP_400_BAD_REQUEST,
+            project = ProjectProgress.objects.select_related("company", "customer", "staff").get(
+                project_no=project_no, status=CommonStatus.ACTIVE
             )
-        sms.used = True
-        sms.save(update_fields=["used"])
-        token = CustomerToken.objects.create(
-            key=secrets.token_urlsafe(32),
-            customer=customer,
-            expires_at=timezone.now() + timedelta(days=30),
-        )
-        return Response(
-            {
-                "token": token.key,
-                "customer": CustomerSerializer(customer).data,
-            }
-        )
+        except ProjectProgress.DoesNotExist:
+            return Response({"detail": "订单编号不正确"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ProjectProgressSerializer(project).data)
 
 
-class CustomerMeView(APIView):
-    """当前登录客户的信息。"""
+# ============================================================
+# 超管工具：生成公司小程序码
+# ============================================================
 
-    authentication_classes = [CustomerAuthentication]
-    permission_classes = [IsCustomer]
+
+class QrCodeView(View):
+    """超管专用：选择公司生成小程序码（客户扫码直接进入该公司）。"""
+
+    template_name = "qr_tool.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_authenticated or not request.user.is_superuser:
+            next_url = quote(str(reverse_lazy("qr")))
+            return HttpResponseRedirect(f"{reverse_lazy('admin:login')}?next={next_url}")
+        return super().dispatch(request, *args, **kwargs)
+
+    def _companies(self):
+        return Company.objects.filter(status=CommonStatus.ACTIVE).order_by("name")
 
     def get(self, request):
-        return Response(CustomerSerializer(request.user).data)
+        return render(request, self.template_name, {"companies": self._companies()})
 
-
-class CustomerProjectListView(generics.ListAPIView):
-    """当前客户的项目列表（可按 ?company=<id> 过滤）。"""
-
-    authentication_classes = [CustomerAuthentication]
-    permission_classes = [IsCustomer]
-    serializer_class = ProjectProgressSerializer
-
-    def get_queryset(self):
-        qs = (
-            ProjectProgress.objects.select_related("company", "customer", "staff")
-            .filter(customer=self.request.user, status=CommonStatus.ACTIVE)
-            .order_by("-created_at")
-        )
-        company_id = self.request.query_params.get("company")
-        if company_id:
-            qs = qs.filter(company_id=company_id)
-        return qs
-
-
-class CustomerProjectDetailView(generics.RetrieveAPIView):
-    """当前客户的单个项目详情。"""
-
-    authentication_classes = [CustomerAuthentication]
-    permission_classes = [IsCustomer]
-    serializer_class = ProjectProgressSerializer
-
-    def get_queryset(self):
-        return ProjectProgress.objects.select_related("company", "customer", "staff").filter(
-            customer=self.request.user, status=CommonStatus.ACTIVE
-        )
+    def post(self, request):
+        raw_id = (request.POST.get("company_id") or "").strip()
+        company = Company.objects.filter(pk=int(raw_id)).first() if raw_id.isdigit() else None
+        ctx = {"companies": self._companies(), "company": company}
+        if company is None:
+            messages.error(request, "请选择要生成二维码的公司。")
+            return render(request, self.template_name, ctx)
+        try:
+            png = generate_company_code(company.pk)
+        except WechatError as exc:
+            messages.error(request, str(exc))
+            return render(request, self.template_name, ctx)
+        ctx["qr_data"] = base64.b64encode(png).decode()
+        return render(request, self.template_name, ctx)

@@ -26,9 +26,11 @@ class CustomerSerializer(serializers.ModelSerializer):
         model = Customer
         fields = [
             "id",
+            "company",
             "name",
             "phone",
             "address",
+            "contract",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
@@ -84,8 +86,11 @@ class ProjectStageSerializer(serializers.ModelSerializer):
 
 class ProjectProgressSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source="company.name", read_only=True)
+    company_logo = serializers.ImageField(source="company.logo", read_only=True)
     customer_name = serializers.CharField(source="customer.name", read_only=True)
     customer_phone = serializers.CharField(source="customer.phone", read_only=True)
+    customer_address = serializers.CharField(source="customer.address", read_only=True)
+    customer_contract = serializers.CharField(source="customer.contract", read_only=True)
     staff_name = serializers.CharField(source="staff.name", read_only=True)
     staff_phone = serializers.CharField(source="staff.phone", read_only=True)
     current_stage_name = serializers.CharField(read_only=True)
@@ -95,12 +100,16 @@ class ProjectProgressSerializer(serializers.ModelSerializer):
         model = ProjectProgress
         fields = [
             "id",
+            "project_no",
             "company",
             "company_name",
+            "company_logo",
             "project_name",
             "customer",
             "customer_name",
             "customer_phone",
+            "customer_address",
+            "customer_contract",
             "address",
             "staff",
             "staff_name",
@@ -117,6 +126,8 @@ class ProjectProgressSerializer(serializers.ModelSerializer):
             "stages",
             "customer_name",
             "customer_phone",
+            "customer_address",
+            "customer_contract",
             "staff_name",
             "staff_phone",
         ]

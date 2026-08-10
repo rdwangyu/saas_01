@@ -7,22 +7,27 @@
     <button type="submit" class="btn secondary sm">搜索</button>
     {% if request.GET.q %}<a href="{% url 'dashboard:customer_list' %}" class="btn secondary sm">清除</a>{% endif %}
   </form>
-  <span class="help">客户为全局资料，仅可查看；如需新增请由平台管理员维护。</span>
+  <a href="{% url 'dashboard:customer_create' %}" class="btn">新增客户</a>
 </div>
 {% if customers %}
 <div class="table-card">
   <table class="list">
     <thead>
-      <tr><th>姓名</th><th>电话</th><th>住址</th><th>关联项目</th><th>创建时间</th></tr>
+      <tr><th>姓名</th><th>电话</th><th>住址</th><th>合同编号</th><th>关联项目</th><th>创建时间</th><th>操作</th></tr>
     </thead>
     <tbody>
     {% for c in customers %}
     <tr>
-      <td><a href="{% url 'dashboard:customer_detail' c.pk %}">{{ c.name }}</a></td>
+      <td><a href="{% url 'dashboard:customer_update' c.pk %}">{{ c.name }}</a></td>
       <td>{{ c.phone }}</td>
       <td>{{ c.address|default:"—" }}</td>
+      <td>{{ c.contract|default:"—" }}</td>
       <td>{{ c.projects.count }}</td>
       <td>{{ c.created_at|date:"Y-m-d" }}</td>
+      <td>
+        <a class="btn secondary sm" href="{% url 'dashboard:customer_update' c.pk %}">编辑</a>
+        <a class="btn danger sm" href="{% url 'dashboard:customer_delete' c.pk %}">删除</a>
+      </td>
     </tr>
     {% endfor %}
     </tbody>
@@ -30,6 +35,6 @@
 </div>
 {% include "dashboard/_pagination.html" with page_obj=page_obj %}
 {% else %}
-<div class="card empty">暂无客户。</div>
+<div class="card empty">暂无客户，<a href="{% url 'dashboard:customer_create' %}">新增一个</a>。</div>
 {% endif %}
 {% endblock %}

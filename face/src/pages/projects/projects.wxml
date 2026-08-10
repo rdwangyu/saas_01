@@ -1,58 +1,40 @@
 <view class="page">
-  <!-- 未进入公司 -->
-  <empty
-    wx:if="{{noCompany}}"
-    text="请先在首页输入公司ID"
-    icon="🏢"
-    showAction="{{true}}"
-    actionText="去首页"
-    bind:action="goIndex"
-  />
-
-  <!-- 未登录引导 -->
-  <view wx:elif="{{needLogin}}" class="login-gate">
-    <view class="login-gate-icon">🔐</view>
-    <view class="login-gate-title">请先登录</view>
-    <view class="login-gate-desc">登录后即可查看我的项目进度</view>
-    <button class="login-gate-btn" bindtap="goLogin">登录</button>
+  <!-- 未绑定订单 -->
+  <view wx:if="{{!bound && !loading}}" class="login-gate">
+    <view class="login-gate-icon">📦</view>
+    <view class="login-gate-title">未绑定订单</view>
+    <view class="login-gate-desc">绑定订单后即可查看项目进度</view>
+    <button class="login-gate-btn" bindtap="bindOrder">绑定订单</button>
   </view>
 
-  <block wx:else>
+  <view wx:elif="{{loading}}" class="loading">加载中...</view>
+
+  <!-- 已绑定：展示项目 -->
+  <block wx:elif="{{project}}">
     <view class="project-list">
-      <view
-        class="project-card"
-        wx:for="{{list}}"
-        wx:key="id"
-        data-id="{{item.id}}"
-        bindtap="goDetail"
-        hover-class="project-card-hover"
-      >
+      <view class="project-card" bindtap="goDetail" hover-class="project-card-hover">
         <view class="project-head">
-          <view class="project-name">{{item.project_name}}</view>
-          <view class="stage-badge {{item.current_stage_name === '未开始' ? 'stage-badge-muted' : ''}}">
-            {{item.current_stage_name || '未开始'}}
+          <view class="project-name">{{project.project_name}}</view>
+          <view class="stage-badge {{project.current_stage_name === '未开始' ? 'stage-badge-muted' : ''}}">
+            {{project.current_stage_name || '未开始'}}
           </view>
         </view>
-        <view class="project-meta project-address">地址：{{item.address}}</view>
+        <view class="project-meta project-address">订单编号：{{project.project_no}}</view>
+        <view class="project-meta project-address">地址：{{project.address}}</view>
         <view class="project-foot">
-          <text class="project-date">{{item.createdText}}</text>
+          <text class="project-date">{{project.createdText}}</text>
+          <text class="project-detail-link">查看详情 ›</text>
         </view>
       </view>
     </view>
 
-    <view class="load-more" wx:if="{{list.length}}">
-      <text wx:if="{{loading}}">加载中...</text>
-      <text wx:elif="{{!hasMore}}">没有更多了</text>
-      <text wx:else>上拉加载更多</text>
-    </view>
-
     <empty
-      wx:if="{{!list.length && !loading}}"
-      text="{{error || '暂无项目进度数据'}}"
-      icon="🗓"
-      showAction="{{!!error}}"
+      wx:if="{{error}}"
+      text="{{error}}"
+      icon="⚠️"
+      showAction="{{true}}"
       actionText="重新加载"
-      bind:action="loadList"
+      bind:action="loadProject"
     />
   </block>
 </view>

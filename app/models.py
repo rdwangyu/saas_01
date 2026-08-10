@@ -1,3 +1,7 @@
+from urllib.parse import unquote, urlparse
+
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.files.storage import default_storage
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils.deconstruct import deconstructible
@@ -32,6 +36,15 @@ def _safe_slug(text: str, fallback: str) -> str:
     if not s:
         return fallback
     return s[:MAX_SLUG_LEN]
+
+
+def _delete_oss_url(url):
+    """把 OSS URL 转成对象路径并从存储中删除（配合 JSONField 里存的 URL 列表）。"""
+    if not url:
+        return
+    path = unquote(urlparse(url).path).lstrip("/")
+    if path:
+        default_storage.delete(path)
 
 
 def company_logo_path(instance, filename):
@@ -112,15 +125,20 @@ class Company(models.Model):
 
 
 class Customer(models.Model):
-    """客户：公司服务的人员，通过手机号+短信验证码登录小程序。
+    """客户：公司服务的人员，归属于某家公司，由该公司管理员增删改查。"""
 
-    客户是全局表（仅超级管理员可维护），不直接归属某家公司，
-    公司与客户的关系通过「项目 → 客户」体现。
-    """
-
+    company = models.ForeignKey(
+        Company,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="customers",
+        verbose_name="所属公司",
+    )
     name = models.CharField("姓名", max_length=100)
     phone = models.CharField("电话", max_length=30, unique=True)
     address = models.CharField("住址", max_length=300, default="")
+    contract = models.CharField("合同编号", max_length=100, blank=True, default="")
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     class Meta:
@@ -131,24 +149,18 @@ class Customer(models.Model):
     def __str__(self):
         return f"{self.name}（{self.phone}）"
 
-    @property
-    def is_authenticated(self):
-        # 客户由 CustomerAuthentication 认证，DRF 权限需要该属性
-        return True
-
-    @property
-    def is_anonymous(self):
-        return False
-
 
 class Staff(models.Model):
-    """公司员工：独立于 admin 认证用户（auth.User）的员工表，验证码登录。"""
+    """公司员工：独立于 admin 认证用户（auth.User）的员工表，手机号+密码登录。"""
 
     class Role(models.TextChoices):
         ADMIN = "项目负责人", "公司管理员"
 
     name = models.CharField("姓名", max_length=150)
-    phone = models.CharField("联系电话", max_length=30, unique=True, help_text="用于短信验证码登录")
+    phone = models.CharField("联系电话", max_length=30, unique=True, help_text="登录账号（手机号）")
+    password = models.CharField(
+        "密码", max_length=128, default="", help_text="由超管在后台设置/员工自助修改"
+    )
     email = models.EmailField("电子邮件地址", blank=True)
     company = models.ForeignKey(
         Company,
@@ -176,6 +188,12 @@ class Staff(models.Model):
         company_name = self.company.name if self.company else "无公司"
         return f"{self.name}（{company_name}）"
 
+    def set_password(self, raw_password):
+        self.password = make_password(raw_password)
+
+    def check_password(self, raw_password):
+        return check_password(raw_password, self.password)
+
 
 class Case(models.Model):
     company = models.ForeignKey(
@@ -189,6 +207,7 @@ class Case(models.Model):
         "封面图",
         upload_to=case_media_path,
         null=True,
+        blank=True,
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg"],
@@ -201,6 +220,7 @@ class Case(models.Model):
         "视频文件",
         upload_to=case_media_path,
         null=True,
+        blank=True,
         validators=[
             FileExtensionValidator(
                 allowed_extensions=["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "m4v"],
@@ -254,6 +274,9 @@ class Case(models.Model):
             val = getattr(self, f, None)
             if val:
                 val.delete(save=False)
+        # 图片集是 JSONField 里存的 URL 列表，需逐个删 OSS 对象
+        for url in self.images or []:
+            _delete_oss_url(url)
         super().delete(*args, **kwargs)
 
 
@@ -340,6 +363,14 @@ class ProjectProgress(models.Model):
         related_name="projects",
         verbose_name="负责人",
     )
+    project_no = models.CharField(
+        "项目编号",
+        max_length=50,
+        unique=True,
+        null=True,
+        blank=True,
+        help_text="由公司管理员手动输入，供小程序客户绑定查看项目进度",
+    )
     project_name = models.CharField("项目名称", max_length=200)
     address = models.CharField("项目地址", max_length=300)
     status = models.CharField(
@@ -367,6 +398,9 @@ class ProjectProgress(models.Model):
         self.save(update_fields=["status"])
 
     def hard_delete(self, *args, **kwargs):
+        # ProjectStage 图片需逐条删除以清理 OSS（FK 级联 raw delete 不会触发 stage.delete()）
+        for stage in self.stages.all():
+            stage.delete()
         super().delete(*args, **kwargs)
 
     @property
@@ -378,49 +412,15 @@ class ProjectProgress(models.Model):
         return last.name if last is not None else "未开始"
 
 
-class SmsCode(models.Model):
-    """短信验证码：发送后暂存，校验成功后作废。purpose 区分客户/员工登录。"""
+class WechatAccessToken(models.Model):
+    """微信小程序 access_token 缓存（仅存一行，用于生成小程序码）。"""
 
-    class Purpose(models.TextChoices):
-        CUSTOMER_LOGIN = "customer_login", "客户登录"
-        STAFF_LOGIN = "staff_login", "员工登录"
-
-    phone = models.CharField("手机号", max_length=30, db_index=True)
-    code = models.CharField("验证码", max_length=10)
-    purpose = models.CharField(
-        "用途",
-        max_length=20,
-        choices=Purpose.choices,
-        default=Purpose.CUSTOMER_LOGIN,
-    )
-    created_at = models.DateTimeField("发送时间", auto_now_add=True)
-    used = models.BooleanField("已使用", default=False)
-
-    class Meta:
-        verbose_name = "短信验证码"
-        verbose_name_plural = "短信验证码"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"{self.phone} - {self.code}"
-
-
-class CustomerToken(models.Model):
-    """客户登录令牌：手机号+验证码登录后签发，代替 JWT（客户不是 Django 用户）。"""
-
-    key = models.CharField("令牌", max_length=64, unique=True)
-    customer = models.ForeignKey(
-        Customer,
-        on_delete=models.CASCADE,
-        related_name="tokens",
-        verbose_name="客户",
-    )
-    created_at = models.DateTimeField("签发时间", auto_now_add=True)
+    token = models.CharField("access_token", max_length=512)
     expires_at = models.DateTimeField("过期时间")
 
     class Meta:
-        verbose_name = "客户令牌"
-        verbose_name_plural = "客户令牌"
+        verbose_name = "微信 access_token"
+        verbose_name_plural = verbose_name
 
     def __str__(self):
-        return f"{self.customer} - {self.key[:8]}..."
+        return self.token[:16] + "..."

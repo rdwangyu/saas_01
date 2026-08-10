@@ -1,17 +1,7 @@
 <view class="page">
-  <!-- 未进入公司 -->
-  <empty
-    wx:if="{{noCompany}}"
-    text="请先在首页输入公司ID"
-    icon="🏢"
-    showAction="{{true}}"
-    actionText="去首页"
-    bind:action="goIndex"
-  />
-
   <!-- 加载失败 -->
   <empty
-    wx:elif="{{error && !company}}"
+    wx:if="{{error && !company}}"
     text="{{error}}"
     icon="⚠️"
     showAction="{{true}}"

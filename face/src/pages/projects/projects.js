@@ -1,79 +1,60 @@
-const { request, getCustomerToken } = require('../../utils/request')
+const { request } = require('../../utils/request')
 const { formatDate } = require('../../utils/util')
 
 Page({
   data: {
-    list: [],
-    page: 1,
-    hasMore: true,
+    bound: false,
+    project: null,
     loading: false,
     error: '',
-    needLogin: false,
-    noCompany: false,
   },
 
   onShow() {
     const app = getApp()
-    if (!app.globalData.currentCompanyId) {
-      this.setData({ noCompany: true, needLogin: false, list: [] })
+    if (!app.globalData.orderNo) {
+      this.setData({ bound: false, project: null, error: '' })
       return
     }
-    if (!getCustomerToken()) {
-      this.setData({ needLogin: true, noCompany: false, list: [] })
-      return
-    }
-    this.setData({ needLogin: false, noCompany: false })
-    this.loadList(true)
+    this.loadProject()
   },
 
   onPullDownRefresh() {
-    this.onShow().finally(() => wx.stopPullDownRefresh())
+    this.loadProject().finally(() => wx.stopPullDownRefresh())
   },
 
-  onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) {
-      this.loadList(false)
-    }
-  },
-
-  async loadList(reset) {
-    const companyId = getApp().globalData.currentCompanyId
-    if (!companyId) return
-    if (this.data.loading) return
-    const page = reset ? 1 : this.data.page + 1
+  /** 拉取绑定项目最新进度（同时刷新缓存） */
+  async loadProject() {
+    const app = getApp()
+    if (!app.globalData.orderNo) return
     this.setData({ loading: true, error: '' })
     try {
-      const data = await request(`/customer/projects/?company=${companyId}&page=${page}`)
-      const items = (data.results || []).map((item) => ({
-        ...item,
-        createdText: formatDate(item.created_at),
-      }))
+      const project = await request('/bind-project/', {
+        method: 'POST',
+        data: { project_no: app.globalData.orderNo },
+      })
+      app.setBound(app.globalData.orderNo, project.company, project)
       this.setData({
-        list: reset ? items : this.data.list.concat(items),
-        page,
-        hasMore: !!data.next,
+        bound: true,
+        project: { ...project, createdText: formatDate(project.created_at) },
         loading: false,
       })
     } catch (err) {
-      this.setData({
-        loading: false,
-        error: err.message,
-        list: reset ? [] : this.data.list,
-      })
+      // 编号失效（项目被删/停用）→ 自动解绑
+      if (err.statusCode === 400) {
+        app.clearBound()
+        this.setData({ bound: false, project: null, loading: false })
+      } else {
+        this.setData({ bound: true, loading: false, error: err.message })
+      }
     }
   },
 
-  goDetail(e) {
-    const id = e.currentTarget.dataset.id
-    wx.navigateTo({ url: `/pages/project-detail/project-detail?id=${id}` })
+  async bindOrder() {
+    const ok = await getApp().bindOrder()
+    if (ok) this.onShow()
   },
 
-  goLogin() {
-    getApp().globalData.afterLogin = '/pages/projects/projects'
-    wx.navigateTo({ url: '/pages/login/login' })
-  },
-
-  goIndex() {
-    wx.reLaunch({ url: '/pages/index/index' })
+  goDetail() {
+    wx.navigateTo({ url: '/pages/project-detail/project-detail' })
   },
 })

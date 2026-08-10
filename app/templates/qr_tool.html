@@ -1,0 +1,47 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>生成公司二维码 · 白云企业管理</title>
+<link rel="stylesheet" href="{% static 'dashboard/css/dashboard.css' %}">
+</head>
+<body class="login-page">
+  <div class="login-card" style="max-width:480px">
+    <h1>生成公司二维码</h1>
+    <p class="subtitle">选择公司生成小程序码，客户微信扫码即可进入该公司查看简介和案例</p>
+
+    {% if messages %}
+    <ul class="messages">
+      {% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <form method="post" action="{% url 'qr' %}">
+      {% csrf_token %}
+      <p>
+        <label for="company_id">选择公司</label>
+        <select name="company_id" id="company_id" required style="width:100%;padding:8px">
+          <option value="">-- 请选择公司 --</option>
+          {% for c in companies %}
+          <option value="{{ c.id }}" {% if company and company.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </p>
+      <button type="submit" class="btn" style="width:100%">生成二维码</button>
+    </form>
+
+    {% if qr_data %}
+    <div class="qr-result">
+      <h3>{{ company.name }} 的小程序码</h3>
+      <img src="data:image/png;base64,{{ qr_data }}" alt="公司二维码"
+           style="width:240px;height:240px;display:block;margin:0 auto;">
+      <p class="help">客户用微信「扫一扫」直接打开小程序，或在小程序内点「扫码进入公司」扫描此码，即可进入该公司查看简介和案例。</p>
+    </div>
+    {% endif %}
+
+    <p style="margin-top:20px"><a href="/admin/">← 返回系统后台</a></p>
+  </div>
+</body>
+</html>
