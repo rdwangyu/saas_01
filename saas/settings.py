@@ -92,7 +92,7 @@ USE_TZ = True
 # 静态文件
 # ============================================================
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = "/var/www/saas/staticfiles"
 
 # ============================================================
 # 阿里云 OSS — 媒体文件存储
@@ -129,15 +129,11 @@ REST_FRAMEWORK = {
 }
 
 # ============================================================
-# 阿里云短信（客户登录验证码）
-# SMS_TEST_MODE=True 时不真正发短信，验证码打印到日志并随响应返回，便于联调。
-# 提供 AccessKey/签名/模板后置 False 并填入以下配置即可接入真实短信。
+# 微信小程序（生成小程序码：客户扫码直接进入对应公司）
+# WECHAT_MINI_PROGRAM_SECRET 需在微信公众平台「开发管理-开发设置」获取后填入
 # ============================================================
-SMS_TEST_MODE = True
-SMS_ALIYUN_ACCESS_KEY_ID = ""
-SMS_ALIYUN_ACCESS_KEY_SECRET = ""
-SMS_ALIYUN_SIGN_NAME = ""
-SMS_ALIYUN_TEMPLATE_CODE = ""
+WECHAT_MINI_PROGRAM_APPID = ""
+WECHAT_MINI_PROGRAM_SECRET = ""
 
 # 默认主键类型
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
