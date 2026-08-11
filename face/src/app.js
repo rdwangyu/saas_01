@@ -36,29 +36,48 @@ App({
     this.globalData.companyId = wx.getStorageSync(VIEW_COMPANY_KEY) || null
     this.globalData.orderNo = wx.getStorageSync(ORDER_KEY) || null
     this.globalData.boundCompanyId = wx.getStorageSync(BOUND_COMPANY_KEY) || null
-    // 扫码/小程序码进入：options.scene 是场景码数字（如 1047=扫小程序码），不能当公司 id 用。
-    // scene 业务内容在 options.q（扫码）或 options.query（编译参数/页面 query）里。
-    const q = options && options.q ? decodeURIComponent(options.q) : ''
-    const query = options && options.query
-    let queryScene = ''
-    if (typeof query === 'string') queryScene = query
-    else if (query && query.scene) queryScene = String(query.scene)
-    const id = parseCompanyId(q) || parseCompanyId(queryScene)
+    this._processEntryOptions(options)
+  },
+
+  // 小程序已运行再点分享/扫码进入时，onShow 也会带 options，同样处理
+  onShow(options) {
+    this._processEntryOptions(options)
+  },
+
+  /**
+   * 处理进入参数里的公司 id（扫码/分享/小程序码）。
+   * 注意 options.scene 是场景码数字（如 1047=扫小程序码），不是业务内容；
+   * 业务内容在 options.q（扫码）或 options.query（分享卡片/页面 query）里。
+   */
+  _processEntryOptions(options) {
+    if (!options) return
+    const q = options.q ? decodeURIComponent(options.q) : ''
+    const query = options.query
+    let sceneStr = ''
+    let companyIdStr = ''
+    if (typeof query === 'string') {
+      sceneStr = query
+    } else if (query) {
+      if (query.scene) sceneStr = String(query.scene)
+      companyIdStr = String(query.company_id || query.companyId || '')
+    }
+    const id = parseCompanyId(q) || parseCompanyId(sceneStr) || parseCompanyId(companyIdStr)
     if (id) this.setCompanyId(id)
   },
 
-  /** 当前应展示的公司 id：优先扫码选中的公司，其次绑定订单所属公司 */
+  /** 当前应展示的公司 id：优先扫码/分享选中的公司，其次绑定订单所属公司 */
   getCurrentCompanyId() {
     return this.globalData.companyId || this.globalData.boundCompanyId
   },
 
-  /** 扫码进入公司：扫描二维码 → 解析公司 id → 校验 → 存本地 */
+  /** 扫码进入公司：扫描二维码/小程序码 → 解析公司 id → 校验 → 存本地 */
   scanCompany() {
     return new Promise((resolve) => {
       wx.scanCode({
         onlyFromCamera: false,
         success: async (res) => {
-          const id = parseCompanyId(res.result)
+          // 普通二维码内容在 res.result；小程序码内容在 res.path（pages/...?scene=company_2）
+          const id = parseCompanyId(res.result) || parseCompanyId(res.path)
           if (!id) {
             wx.showToast({ title: '二维码无效，未识别公司', icon: 'none' })
             return resolve(false)
@@ -82,6 +101,11 @@ App({
   setCompanyId(id) {
     this.globalData.companyId = id
     wx.setStorageSync(VIEW_COMPANY_KEY, id)
+    // 防跨公司串数据：若已绑定的订单属于其他公司，进入新公司时自动解绑，
+    // 项目进度/“我的”回到“未绑定订单”，绝不展示别的公司的项目。
+    if (this.globalData.boundCompanyId && this.globalData.boundCompanyId !== id) {
+      this.clearBound()
+    }
   },
 
   /** 绑定订单：弹窗输入订单编号 → 后端校验 → 成功写入全局 + 缓存 */

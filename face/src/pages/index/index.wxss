@@ -1,0 +1,94 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #3a7bfd 0%, #6d5dfc 100%);
+  padding: 0 60rpx;
+}
+
+.index-hero {
+  text-align: center;
+  margin-bottom: 80rpx;
+}
+
+.index-logo {
+  font-size: 120rpx;
+  line-height: 1;
+}
+
+.index-title {
+  color: #fff;
+  font-size: 44rpx;
+  font-weight: 600;
+  margin-top: 24rpx;
+}
+
+.index-desc {
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 26rpx;
+  margin-top: 16rpx;
+}
+
+.scan-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 56rpx 40rpx 48rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.18);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.scan-card-hover {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.scan-icon {
+  position: relative;
+  width: 150rpx;
+  height: 150rpx;
+  border: 6rpx solid #3a7bfd;
+  border-radius: 26rpx;
+  overflow: hidden;
+  background: rgba(58, 123, 253, 0.04);
+}
+
+.scan-line {
+  position: absolute;
+  left: 12rpx;
+  right: 12rpx;
+  height: 6rpx;
+  border-radius: 999rpx;
+  background: linear-gradient(90deg, transparent, #3a7bfd, transparent);
+  animation: scan-move 1.8s ease-in-out infinite;
+}
+@keyframes scan-move {
+  0% { top: 12rpx; }
+  50% { top: 132rpx; }
+  100% { top: 12rpx; }
+}
+
+.scan-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #1f2937;
+  margin-top: 28rpx;
+}
+
+.scan-sub {
+  font-size: 24rpx;
+  color: #6b7280;
+  margin-top: 12rpx;
+  text-align: center;
+}
+
+.index-tip {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 22rpx;
+  margin-top: 40rpx;
+  text-align: center;
+}

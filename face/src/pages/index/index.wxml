@@ -1,0 +1,17 @@
+<view class="page">
+  <view class="index-hero">
+    <view class="index-logo">🏢</view>
+    <view class="index-title">白云企业管理</view>
+    <view class="index-desc">扫码进入公司，查看简介与案例</view>
+  </view>
+
+  <view class="scan-card" bindtap="scanCompany" hover-class="scan-card-hover">
+    <view class="scan-icon">
+      <view class="scan-line"></view>
+    </view>
+    <view class="scan-title">扫码进入公司</view>
+    <view class="scan-sub">扫描公司二维码 / 小程序码，或从相册选择</view>
+  </view>
+
+  <view class="index-tip">新公司用户请扫描公司二维码进入</view>
+</view>

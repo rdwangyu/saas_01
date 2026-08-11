@@ -47,4 +47,23 @@ Page({
     if (!phone) return
     wx.makePhoneCall({ phoneNumber: String(phone) })
   },
+
+  /** 分享给好友：携带当前公司 id，对方点开直接进入本公司 */
+  onShareAppMessage() {
+    const id = getApp().getCurrentCompanyId()
+    const name = this.data.company ? this.data.company.name : '白云企业管理'
+    return {
+      title: name,
+      path: `/pages/company/company?company_id=${id}`,
+    }
+  },
+
+  /** 分享到朋友圈 */
+  onShareTimeline() {
+    const id = getApp().getCurrentCompanyId()
+    return {
+      title: this.data.company ? this.data.company.name : '白云企业管理',
+      query: `company_id=${id}`,
+    }
+  },
 })

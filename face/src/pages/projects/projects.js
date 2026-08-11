@@ -15,6 +15,14 @@ Page({
       this.setData({ bound: false, project: null, error: '' })
       return
     }
+    // 防御：绑定项目必须属于当前查看的公司，否则解绑，绝不展示其他公司的项目
+    const project = app.globalData.boundProject
+    const companyId = app.getCurrentCompanyId()
+    if (project && companyId && project.company !== companyId) {
+      app.clearBound()
+      this.setData({ bound: false, project: null, error: '' })
+      return
+    }
     this.loadProject()
   },
 
