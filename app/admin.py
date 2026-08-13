@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .widgets import SimpleFileInput
+from .widgets import OssUrlInput
 
 from .models import (
     Company,
@@ -35,10 +35,10 @@ class SuperuserOnlyMixin:
 
 def image_preview(obj, field_name, width=80):
     img = getattr(obj, field_name, None)
-    if img and hasattr(img, "url"):
+    if img:
         return format_html(
             '<img src="{}" style="max-width:{}px; max-height:{}px; border-radius:4px;" />',
-            img.url,
+            img,
             width,
             width,
         )
@@ -50,7 +50,7 @@ class CompanyForm(forms.ModelForm):
         model = Company
         fields = "__all__"
         widgets = {
-            "logo": SimpleFileInput(),
+            "logo": OssUrlInput(accept="image/*", dir="company_logo"),
         }
 
     def clean_credit_code(self):
@@ -317,9 +317,9 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         form = super().get_form(request, obj=obj, **kwargs)
 
         if "cover" in form.base_fields:
-            form.base_fields["cover"].widget = SimpleFileInput(attrs={"accept": "image/*"})
+            form.base_fields["cover"].widget = OssUrlInput(accept="image/*", dir="company_case")
         if "video" in form.base_fields:
-            form.base_fields["video"].widget = SimpleFileInput(attrs={"accept": "video/*"})
+            form.base_fields["video"].widget = OssUrlInput(accept="video/*", dir="company_case")
 
         return form
 
@@ -343,8 +343,19 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
             obj.hard_delete()
 
 
+class ProjectStageInlineForm(forms.ModelForm):
+    class Meta:
+        model = ProjectStage
+        fields = ["name", "image_0", "image_1", "image_2", "description"]
+        widgets = {
+            f"image_{i}": OssUrlInput(accept="image/*", dir="company_project_progress")
+            for i in range(3)
+        }
+
+
 class ProjectStageInline(admin.StackedInline):
     model = ProjectStage
+    form = ProjectStageInlineForm
     extra = 1
     can_delete = False
     fieldsets = (

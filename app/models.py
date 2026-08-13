@@ -2,7 +2,6 @@ from urllib.parse import unquote, urlparse
 
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.files.storage import default_storage
-from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils.deconstruct import deconstructible
 from django.utils.text import slugify
@@ -39,12 +38,15 @@ def _safe_slug(text: str, fallback: str) -> str:
 
 
 def _delete_oss_url(url):
-    """把 OSS URL 转成对象路径并从存储中删除（配合 JSONField 里存的 URL 列表）。"""
+    """把 OSS URL 转成对象路径并从存储中删除。"""
     if not url:
         return
     path = unquote(urlparse(url).path).lstrip("/")
     if path:
         default_storage.delete(path)
+
+
+# ---- 以下 upload_to 路径函数仅被历史迁移引用，保留以兼容迁移状态 ----
 
 
 def company_logo_path(instance, filename):
@@ -68,12 +70,27 @@ def case_gallery_path(instance, filename):
     return f"company_case/{safe_company}_case_{safe_title}_{uuid4().hex[:8]}.{ext}"
 
 
+@deconstructible
+class stage_image_path:
+    def __init__(self, image_num):
+        self.image_num = image_num
+
+    def __call__(self, instance, filename):
+        ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
+        safe_company = _safe_slug(instance.project.company.name, "unknown")
+        safe_project = _safe_slug(instance.project.project_name, "unknown")
+        safe_stage = _safe_slug(instance.name, "unknown")
+        return f"company_project_progress/{safe_company}_{safe_project}_{safe_stage}_{self.image_num}.{ext}"
+
+
 class Company(models.Model):
     name = models.CharField("公司名称", max_length=200)
     credit_code = models.CharField(
         "社会统一信用代码", max_length=18, help_text="仅系统管理员可编辑"
     )
-    logo = models.ImageField("Logo", upload_to=company_logo_path, blank=True, null=True)
+    logo = models.CharField(
+        "Logo", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+    )
     description = models.TextField("公司简介", blank=True, default="")
     phone = models.CharField("联系电话", max_length=30, default="")
     address = models.CharField("公司地址", max_length=300, default="")
@@ -107,7 +124,7 @@ class Company(models.Model):
             try:
                 old = Company.objects.get(pk=self.pk)
                 if old.logo and old.logo != self.logo:
-                    old.logo.delete(save=False)
+                    _delete_oss_url(old.logo)
                 if old.status == CommonStatus.ACTIVE and self.status == CommonStatus.INACTIVE:
                     self.cases.all().update(status=CommonStatus.INACTIVE)
                     self.projects.all().update(status=CommonStatus.INACTIVE)
@@ -203,30 +220,11 @@ class Case(models.Model):
         verbose_name="所属公司",
     )
     title = models.CharField("案例标题", max_length=200)
-    cover = models.ImageField(
-        "封面图",
-        upload_to=case_media_path,
-        null=True,
-        blank=True,
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg"],
-                message="封面图仅支持图片格式（jpg/jpeg/png/gif/webp/bmp/tiff/svg）",
-            )
-        ],
+    cover = models.CharField(
+        "封面图", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
     )
-    images = models.JSONField("图片集", default=list, blank=True)
-    video = models.FileField(
-        "视频文件",
-        upload_to=case_media_path,
-        null=True,
-        blank=True,
-        validators=[
-            FileExtensionValidator(
-                allowed_extensions=["mp4", "mov", "avi", "mkv", "wmv", "flv", "webm", "m4v"],
-                message="仅支持视频文件（mp4/mov/avi/mkv/wmv/flv/webm/m4v）",
-            )
-        ],
+    video = models.CharField(
+        "视频文件", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
     )
     description = models.TextField("案例描述", blank=True, default="")
     style = models.CharField("风格", max_length=100, blank=True, default="")
@@ -260,7 +258,7 @@ class Case(models.Model):
                     old_val = getattr(old, f, None)
                     new_val = getattr(self, f, None)
                     if old_val and old_val != new_val:
-                        old_val.delete(save=False)
+                        _delete_oss_url(old_val)
             except Case.DoesNotExist:
                 pass
         super().save(*args, **kwargs)
@@ -273,24 +271,8 @@ class Case(models.Model):
         for f in ["cover", "video"]:
             val = getattr(self, f, None)
             if val:
-                val.delete(save=False)
-        # 图片集是 JSONField 里存的 URL 列表，需逐个删 OSS 对象
-        for url in self.images or []:
-            _delete_oss_url(url)
+                _delete_oss_url(val)
         super().delete(*args, **kwargs)
-
-
-@deconstructible
-class stage_image_path:
-    def __init__(self, image_num):
-        self.image_num = image_num
-
-    def __call__(self, instance, filename):
-        ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
-        safe_company = _safe_slug(instance.project.company.name, "unknown")
-        safe_project = _safe_slug(instance.project.project_name, "unknown")
-        safe_stage = _safe_slug(instance.name, "unknown")
-        return f"company_project_progress/{safe_company}_{safe_project}_{safe_stage}_{self.image_num}.{ext}"
 
 
 class ProjectStage(models.Model):
@@ -301,9 +283,15 @@ class ProjectStage(models.Model):
         verbose_name="所属项目",
     )
     name = models.CharField("阶段名称", max_length=100, blank=True, default="")
-    image_0 = models.ImageField("图片1", upload_to=stage_image_path(0), blank=True, null=True)
-    image_1 = models.ImageField("图片2", upload_to=stage_image_path(1), blank=True, null=True)
-    image_2 = models.ImageField("图片3", upload_to=stage_image_path(2), blank=True, null=True)
+    image_0 = models.CharField(
+        "图片1", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+    )
+    image_1 = models.CharField(
+        "图片2", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+    )
+    image_2 = models.CharField(
+        "图片3", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+    )
     description = models.TextField("阶段描述", blank=True, default="")
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
@@ -326,7 +314,7 @@ class ProjectStage(models.Model):
                     old_val = getattr(old, f, None)
                     new_val = getattr(self, f, None)
                     if old_val and old_val != new_val:
-                        old_val.delete(save=False)
+                        _delete_oss_url(old_val)
             except ProjectStage.DoesNotExist:
                 pass
         super().save(*args, **kwargs)
@@ -335,7 +323,7 @@ class ProjectStage(models.Model):
         for f in ["image_0", "image_1", "image_2"]:
             val = getattr(self, f, None)
             if val:
-                val.delete(save=False)
+                _delete_oss_url(val)
         super().delete(*args, **kwargs)
 
 

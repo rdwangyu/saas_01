@@ -47,7 +47,6 @@ class CaseSerializer(serializers.ModelSerializer):
             "company_name",
             "title",
             "cover",
-            "images",
             "video",
             "description",
             "style",
@@ -55,7 +54,7 @@ class CaseSerializer(serializers.ModelSerializer):
             "budget",
             "created_at",
         ]
-        read_only_fields = ["id", "company", "images", "video", "created_at"]
+        read_only_fields = ["id", "company", "video", "created_at"]
 
     def validate_cover(self, value):
         if value:

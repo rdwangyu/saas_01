@@ -18,7 +18,7 @@
     <tbody>
     {% for c in cases %}
     <tr>
-      <td>{% if c.cover %}<img class="cover-sm" src="{{ c.cover.url }}" alt="">{% else %}—{% endif %}</td>
+      <td>{% if c.cover %}<img class="cover-sm" src="{{ c.cover }}" alt="">{% else %}—{% endif %}</td>
       <td><a href="{% url 'dashboard:case_update' c.pk %}">{{ c.title }}</a></td>
       <td>{{ c.company.name }}</td>
       <td>{{ c.style|default:"—" }}</td>

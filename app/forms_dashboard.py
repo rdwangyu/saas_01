@@ -11,7 +11,7 @@ from django.core.files.storage import default_storage
 from django.forms.formsets import DELETION_FIELD_NAME
 from django.forms.models import BaseInlineFormSet
 
-from .widgets import SimpleFileInput
+from .widgets import OssUrlInput
 
 from .models import (
     Case,
@@ -20,7 +20,6 @@ from .models import (
     ProjectProgress,
     ProjectStage,
     Staff,
-    case_gallery_path,
 )
 
 
@@ -31,29 +30,6 @@ def get_current_staff(request):
     if not staff_id:
         return None
     return Staff.objects.filter(pk=staff_id, is_active=True).first()
-
-
-class MultipleFileInput(SimpleFileInput):
-    allow_multiple_selected = True
-
-
-class MultipleFileField(forms.FileField):
-    """Django 6.0.7 无内置多文件字段，按官方 snippet 自建。"""
-
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("widget", MultipleFileInput())
-        super().__init__(*args, **kwargs)
-
-    def clean(self, data, initial=None):
-        single = super().clean(data, initial)
-        if isinstance(single, (list, tuple)):
-            return single
-        return [single] if single else []
-
-    def widget_attrs(self, widget):
-        attrs = super().widget_attrs(widget)
-        attrs["multiple"] = True
-        return attrs
 
 
 class BaseDashboardForm(forms.ModelForm):
@@ -106,7 +82,7 @@ class CompanyForm(BaseDashboardForm):
             "address",
             "established_date",
         ]
-        widgets = {"logo": SimpleFileInput(attrs={"accept": "image/*"})}
+        widgets = {"logo": OssUrlInput(accept="image/*", dir="company_logo")}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -116,81 +92,15 @@ class CompanyForm(BaseDashboardForm):
 
 
 class CaseForm(BaseDashboardForm):
-    """案例表单：封面/视频单文件 + 图片集多文件上传（追加）与勾选删除。"""
-
-    new_images = MultipleFileField(required=False, label="新增图片")
-    remove_images = forms.MultipleChoiceField(
-        required=False, widget=forms.CheckboxSelectMultiple, label="删除图片"
-    )
+    """案例表单：封面/视频 OSS 直传，只保存 URL。"""
 
     class Meta:
         model = Case
         fields = ["title", "cover", "video", "description", "style", "area", "budget"]
         widgets = {
-            "cover": SimpleFileInput(attrs={"accept": "image/*"}),
-            "video": SimpleFileInput(attrs={"accept": "video/*"}),
+            "cover": OssUrlInput(accept="image/*", dir="company_case"),
+            "video": OssUrlInput(accept="video/*", dir="company_case"),
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        existing = list(self.instance.images or [])
-        self.fields["remove_images"].choices = [(url, url) for url in existing]
-
-    def clean(self):
-        cleaned = super().clean()
-        company = getattr(self.instance, "company", None)
-        if company is None:
-            current = self._current_staff()
-            company = getattr(current, "company", None)
-        if company is None:
-            return cleaned
-
-        # 图片数量：现有（扣除勾选删除）+ 新增 <= max_images
-        current = list(getattr(self.instance, "images", None) or [])
-        remove = set(cleaned.get("remove_images") or [])
-        invalid_remove = remove - set(current)
-        if invalid_remove:
-            raise ValidationError("包含不存在的图片，请刷新后重试。")
-        keep = [u for u in current if u not in remove]
-        new_count = len(cleaned.get("new_images") or [])
-        if len(keep) + new_count > company.max_images:
-            raise ValidationError(
-                f"图片总数不能超过 {company.max_images} 张（现有 {len(keep)} 张 + 新增 {new_count} 张）。"
-            )
-
-        # 视频大小
-        video = cleaned.get("video")
-        if video is not None and hasattr(video, "size"):
-            limit = company.max_video_size * 1024 * 1024
-            if video.size > limit:
-                raise ValidationError(f"视频大小不能超过 {company.max_video_size}MB。")
-        return cleaned
-
-    def save(self, commit=True):
-        instance = super().save(commit=False)
-        current = list(instance.images or [])
-        remove = set(self.cleaned_data.get("remove_images") or [])
-        keep = [u for u in current if u not in remove]
-
-        uploaded_keys = []
-        try:
-            for f in self.cleaned_data.get("new_images") or []:
-                key = default_storage.save(case_gallery_path(instance, f.name), f)
-                uploaded_keys.append(key)
-                keep.append(default_storage.url(key))
-        except Exception:
-            for key in uploaded_keys:
-                default_storage.delete(key)
-            raise ValidationError("图片上传失败，请重试。")
-
-        # 删除勾选移除的 OSS 对象
-        for url in set(current) - set(keep):
-            self._delete_oss_url(url)
-
-        instance.images = keep
-        if commit:
-            instance.save()
-        return instance
 
 
 class ProjectForm(BaseDashboardForm):
@@ -223,7 +133,10 @@ class ProjectStageForm(forms.ModelForm):
     class Meta:
         model = ProjectStage
         fields = ["name", "image_0", "image_1", "image_2", "description"]
-        widgets = {f"image_{i}": SimpleFileInput(attrs={"accept": "image/*"}) for i in range(3)}
+        widgets = {
+            f"image_{i}": OssUrlInput(accept="image/*", dir="company_project_progress")
+            for i in range(3)
+        }
 
 
 class StageInlineFormSet(BaseInlineFormSet):

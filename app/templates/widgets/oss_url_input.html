@@ -1,0 +1,68 @@
+<div class="oss-upload" id="oss-{{ widget.name }}-box"
+     data-url="{% url 'api:oss-upload-url' %}"
+     data-dir="{{ widget.upload_dir }}"
+     data-accept="{{ widget.accept }}"
+     data-inited="">
+  <input type="hidden" name="{{ widget.name }}" value="{{ widget.value|default:'' }}" id="oss-{{ widget.name }}">
+  <div class="oss-preview" id="oss-{{ widget.name }}-preview">
+    {% if widget.value %}
+      {% if widget.is_video %}<video src="{{ widget.value }}" controls style="max-width:200px"></video>
+      {% else %}<img src="{{ widget.value }}" alt="" style="max-width:160px;border-radius:6px">{% endif %}
+    {% endif %}
+  </div>
+  <div class="oss-actions">
+    <label class="btn secondary sm" style="cursor:pointer">选择文件
+      <input type="file" id="oss-{{ widget.name }}-file" accept="{{ widget.accept }}" style="display:none">
+    </label>
+    <span class="btn sm" id="oss-{{ widget.name }}-btn" style="cursor:pointer">上传</span>
+  </div>
+  <div class="oss-status" id="oss-{{ widget.name }}-status" style="font-size:13px;margin-top:6px"></div>
+</div>
+<script>
+(function () {
+  var box = document.getElementById('oss-{{ widget.name }}-box')
+  if (!box || box.dataset.inited === '1') return
+  box.dataset.inited = '1'
+  var hidden = document.getElementById('oss-{{ widget.name }}')
+  var preview = document.getElementById('oss-{{ widget.name }}-preview')
+  var fileInput = document.getElementById('oss-{{ widget.name }}-file')
+  var btn = document.getElementById('oss-{{ widget.name }}-btn')
+  var status = document.getElementById('oss-{{ widget.name }}-status')
+  var isVideo = box.dataset.accept.indexOf('video') === 0
+
+  function csrf() {
+    var m = document.cookie.match(/csrftoken=([^;]+)/)
+    return m ? m[1] : ''
+  }
+  function showStatus(msg, ok) {
+    status.textContent = msg
+    status.style.color = ok ? '#10b981' : '#ef4444'
+  }
+  async function upload(file) {
+    showStatus('上传中…')
+    try {
+      var resp = await fetch(box.dataset.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
+        body: JSON.stringify({ dir: box.dataset.dir, filename: file.name }),
+      })
+      var data = await resp.json()
+      if (!resp.ok) { showStatus(data.detail || '获取上传地址失败'); return }
+      // 用空类型 Blob 包裹，使 fetch 不带 Content-Type 头（否则与签名不符会 403）
+      var up = await fetch(data.upload_url, { method: 'PUT', body: new Blob([file]) })
+      if (!up.ok) { showStatus('上传到 OSS 失败（' + up.status + '）'); return }
+      hidden.value = data.file_url
+      preview.innerHTML = isVideo
+        ? '<video src="' + data.file_url + '" controls style="max-width:200px"></video>'
+        : '<img src="' + data.file_url + '" alt="" style="max-width:160px;border-radius:6px">'
+      showStatus('上传成功', true)
+    } catch (e) {
+      showStatus('上传失败：' + (e.message || '网络异常'))
+    }
+  }
+  btn.addEventListener('click', function () { fileInput.click() })
+  fileInput.addEventListener('change', function () {
+    if (fileInput.files && fileInput.files[0]) upload(fileInput.files[0])
+  })
+})();
+</script>

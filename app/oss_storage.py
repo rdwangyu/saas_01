@@ -13,6 +13,10 @@ from oss2.exceptions import NotFound
 logger = logging.getLogger(__name__)
 
 
+class OSSNotConfigured(Exception):
+    """OSS AccessKey 未配置，无法签名直传。"""
+
+
 @deconstructible
 class OSSStorage(Storage):
     def __init__(self):
@@ -82,3 +86,21 @@ class OSSStorage(Storage):
         key = self._key(name)
         result = self.bucket.get_object_meta(key)
         return result.headers.get("last-modified")
+
+
+def sign_upload_url(key, expires=600):
+    """生成 OSS PUT 签名 URL（前端直传用）。返回 (upload_url, file_url)。
+
+    upload_url 供前端直接 PUT 文件（前端 PUT 时必须不带 Content-Type 头，
+    否则与签名不符会 403）；file_url 是上传后的公开访问地址。
+    """
+    if not settings.ALIYUN_OSS_ACCESS_KEY_ID:
+        raise OSSNotConfigured("OSS 未配置，无法上传")
+    auth = Auth(settings.ALIYUN_OSS_ACCESS_KEY_ID, settings.ALIYUN_OSS_ACCESS_KEY_SECRET)
+    # 用 https endpoint 生成签名，避免 https 页面 PUT http 地址被混合内容拦截
+    bucket = Bucket(
+        auth, f"https://{settings.ALIYUN_OSS_ENDPOINT}", settings.ALIYUN_OSS_BUCKET_NAME
+    )
+    upload_url = bucket.sign_url("PUT", key, expires)
+    file_url = f"https://{settings.ALIYUN_OSS_BUCKET_DOMAIN}/{quote(key, safe='/')}"
+    return upload_url, file_url

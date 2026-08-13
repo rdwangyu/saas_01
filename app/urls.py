@@ -50,4 +50,5 @@ api_patterns = [
         name="public-case-detail",
     ),
     path("bind-project/", views.BindProjectView.as_view(), name="bind-project"),
+    path("oss/upload-url/", views.OssUploadUrlView.as_view(), name="oss-upload-url"),
 ]

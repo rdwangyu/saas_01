@@ -6,12 +6,14 @@
 """
 
 import base64
+import json
 from urllib.parse import quote
+from uuid import uuid4
 
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.utils import timezone
@@ -39,6 +41,7 @@ from .forms_dashboard import (
     StaffPasswordForm,
     get_current_staff,
 )
+from .oss_storage import OSSNotConfigured, sign_upload_url
 from .models import (
     Case,
     CommonStatus,
@@ -490,6 +493,46 @@ class BindProjectView(APIView):
         except ProjectProgress.DoesNotExist:
             return Response({"detail": "订单编号不正确"}, status=status.HTTP_400_BAD_REQUEST)
         return Response(ProjectProgressSerializer(project).data)
+
+
+# ============================================================
+# OSS 直传：生成 PUT 签名 URL
+# ============================================================
+
+OSS_ALLOWED_DIRS = {"company_case", "company_logo", "company_project_progress"}
+
+
+class OssUploadUrlView(View):
+    """登录员工/超管获取 OSS 直传签名 URL（前端 PUT 上传，只保存 URL）。"""
+
+    def dispatch(self, request, *args, **kwargs):
+        staff = get_current_staff(request)
+        is_admin = request.user.is_authenticated and request.user.is_superuser
+        if staff is None and not is_admin:
+            return JsonResponse({"detail": "无权限"}, status=403)
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request):
+        try:
+            data = json.loads(request.body)
+        except (ValueError, TypeError):
+            data = request.POST
+        dir_name = (data.get("dir") or "").strip()
+        filename = (data.get("filename") or "").strip()
+        if dir_name not in OSS_ALLOWED_DIRS:
+            return JsonResponse({"detail": "非法目录"}, status=400)
+        if not filename:
+            return JsonResponse({"detail": "缺少文件名"}, status=400)
+
+        staff = get_current_staff(request)
+        company_id = staff.company_id if staff else None
+        ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
+        key = f"{dir_name}/{company_id or 'admin'}_{uuid4().hex[:8]}.{ext}"
+        try:
+            upload_url, file_url = sign_upload_url(key)
+        except OSSNotConfigured as exc:
+            return JsonResponse({"detail": str(exc)}, status=500)
+        return JsonResponse({"upload_url": upload_url, "file_url": file_url})
 
 
 # ============================================================
