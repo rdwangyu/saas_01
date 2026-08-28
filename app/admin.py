@@ -338,10 +338,6 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
     def delete_model(self, request, obj):
         obj.hard_delete()
 
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.hard_delete()
-
 
 class ProjectStageInlineForm(forms.ModelForm):
     class Meta:

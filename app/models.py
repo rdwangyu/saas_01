@@ -5,7 +5,6 @@ from django.core.files.storage import default_storage
 from django.db import models
 from django.utils.deconstruct import deconstructible
 from django.utils.text import slugify
-from uuid import uuid4
 
 MAX_SLUG_LEN = 16
 
@@ -46,43 +45,6 @@ def _delete_oss_url(url):
         default_storage.delete(path)
 
 
-# ---- 以下 upload_to 路径函数仅被历史迁移引用，保留以兼容迁移状态 ----
-
-
-def company_logo_path(instance, filename):
-    ext = filename.rsplit(".", 1)[-1] if "." in filename else "png"
-    safe_name = _safe_slug(instance.name, "company")
-    return f"company_logo/{safe_name}_logo.{ext}"
-
-
-def case_media_path(instance, filename):
-    ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
-    safe_company = _safe_slug(instance.company.name, "unknown")
-    safe_title = _safe_slug(instance.title, "untitled")
-    return f"company_case/{safe_company}_case_{safe_title}.{ext}"
-
-
-def case_gallery_path(instance, filename):
-    """案例图片集路径：case_media_path 无唯一段，同公司+同标题会覆盖；这里加 uuid 后缀。"""
-    ext = filename.rsplit(".", 1)[-1] if "." in filename else "bin"
-    safe_company = _safe_slug(instance.company.name, "unknown")
-    safe_title = _safe_slug(instance.title, "untitled")
-    return f"company_case/{safe_company}_case_{safe_title}_{uuid4().hex[:8]}.{ext}"
-
-
-@deconstructible
-class stage_image_path:
-    def __init__(self, image_num):
-        self.image_num = image_num
-
-    def __call__(self, instance, filename):
-        ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
-        safe_company = _safe_slug(instance.project.company.name, "unknown")
-        safe_project = _safe_slug(instance.project.project_name, "unknown")
-        safe_stage = _safe_slug(instance.name, "unknown")
-        return f"company_project_progress/{safe_company}_{safe_project}_{safe_stage}_{self.image_num}.{ext}"
-
-
 class Company(models.Model):
     name = models.CharField("公司名称", max_length=200)
     credit_code = models.CharField(
@@ -107,7 +69,9 @@ class Company(models.Model):
         help_text="影响案例和项目进度的视频上传上限",
     )
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
-    established_date = models.DateField("成立日期", null=True, blank=True, help_text="公司成立日期")
+    established_date = models.DateField(
+        "成立日期", null=True, blank=True, help_text="公司成立日期"
+    )
 
     objects = SoftDeleteManager()
 
@@ -125,7 +89,10 @@ class Company(models.Model):
                 old = Company.objects.get(pk=self.pk)
                 if old.logo and old.logo != self.logo:
                     _delete_oss_url(old.logo)
-                if old.status == CommonStatus.ACTIVE and self.status == CommonStatus.INACTIVE:
+                if (
+                    old.status == CommonStatus.ACTIVE
+                    and self.status == CommonStatus.INACTIVE
+                ):
                     self.cases.all().update(status=CommonStatus.INACTIVE)
                     self.projects.all().update(status=CommonStatus.INACTIVE)
             except Company.DoesNotExist:
@@ -174,7 +141,9 @@ class Staff(models.Model):
         ADMIN = "项目负责人", "公司管理员"
 
     name = models.CharField("姓名", max_length=150)
-    phone = models.CharField("联系电话", max_length=30, unique=True, help_text="登录账号（手机号）")
+    phone = models.CharField(
+        "联系电话", max_length=30, unique=True, help_text="登录账号（手机号）"
+    )
     password = models.CharField(
         "密码", max_length=128, default="", help_text="由超管在后台设置/员工自助修改"
     )
@@ -221,10 +190,18 @@ class Case(models.Model):
     )
     title = models.CharField("案例标题", max_length=200)
     cover = models.CharField(
-        "封面图", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+        "封面图",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="OSS 直传后保存的 URL",
     )
     video = models.CharField(
-        "视频文件", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+        "视频文件",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="OSS 直传后保存的 URL",
     )
     description = models.TextField("案例描述", blank=True, default="")
     style = models.CharField("风格", max_length=100, blank=True, default="")
@@ -284,13 +261,25 @@ class ProjectStage(models.Model):
     )
     name = models.CharField("阶段名称", max_length=100, blank=True, default="")
     image_0 = models.CharField(
-        "图片1", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+        "图片1",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="OSS 直传后保存的 URL",
     )
     image_1 = models.CharField(
-        "图片2", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+        "图片2",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="OSS 直传后保存的 URL",
     )
     image_2 = models.CharField(
-        "图片3", max_length=500, blank=True, default="", help_text="OSS 直传后保存的 URL"
+        "图片3",
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="OSS 直传后保存的 URL",
     )
     description = models.TextField("阶段描述", blank=True, default="")
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
