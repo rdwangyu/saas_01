@@ -369,8 +369,23 @@ class ProjectStageInline(admin.StackedInline):
     ordering = ("created_at",)
 
 
+class ProjectProgressForm(forms.ModelForm):
+    class Meta:
+        model = ProjectProgress
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance and self.instance.pk:
+            company_id = self.instance.company_id
+            # 根据当前对象的 company_id 来过滤外键字段的查询集
+            self.fields['customer'].queryset = Customer.objects.filter(company_id=company_id)
+            self.fields['staff'].queryset = Staff.objects.filter(company_id=company_id)
+
+    
 @admin.register(ProjectProgress)
 class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
+    form = ProjectProgressForm
     list_display = [
         "id",
         "project_name",
@@ -416,21 +431,6 @@ class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
             },
         ),
     )
-
-    def get_form(self, request, obj=None, change=False, **kwargs):
-        # Django 6 不再设置 request._obj_，这里补上供 formfield_for_foreignkey 用
-        request._obj_ = obj
-        return super().get_form(request, obj=obj, change=change, **kwargs)
-
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        # 编辑已有项目时，客户与负责人下拉只列该项目所属公司的，避免跨公司误选
-        obj = getattr(request, "_obj_", None)
-        if obj is not None:
-            if db_field.name == "customer":
-                kwargs["queryset"] = Customer.objects.filter(company_id=obj.company_id)
-            elif db_field.name == "staff":
-                kwargs["queryset"] = Staff.objects.filter(company_id=obj.company_id)
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_queryset(self, request):
         return (
