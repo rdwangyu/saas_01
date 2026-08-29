@@ -2,18 +2,8 @@
 #+AUTHOR rdwangyu
 #+DATE <2026-08-07 Fri 13:27>
 
-* Django
-
-** feature
-
-** bug
-- [ ] 
-
-
-
-
-* Wechat MiniProgram
-
-** feature
-
-** bug
+* 删除阶段改成立即删除
+* 阶段图片为什么有两个按钮，不是只保存url吗
+* 删除项目表，是否会删除项目进度
+* 案例api查得是全部的，要固定查当前公司的
+* bind-project后会保存吗

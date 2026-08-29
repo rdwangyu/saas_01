@@ -1,0 +1,44 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}项目详情{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="detail-head">
+    <h3>{{ project.project_name }}{% if project.project_no %} <span class="video-badge">{{ project.project_no }}</span>{% endif %}</h3>
+    <div class="detail-actions">
+      <a class="btn sm" href="{% url 'dashboard:stage_create' project.pk %}?next={{ request.path }}">＋ 添加阶段</a>
+      <a class="btn secondary sm" href="{% url 'dashboard:project_update' project.pk %}?next={{ request.path }}">编辑</a>
+      <a class="btn danger sm" href="{% url 'dashboard:project_delete' project.pk %}">删除</a>
+    </div>
+  </div>
+  <dl class="detail-rows">
+    <dt>客户</dt><dd>{{ project.customer.name|default:"—" }}</dd>
+    <dt>负责人</dt><dd>{{ project.staff.name|default:"—" }}</dd>
+    <dt>地址</dt><dd>{{ project.address|default:"—" }}</dd>
+    <dt>当前进度</dt><dd>{{ project.current_stage_name }}</dd>
+    <dt>状态</dt><dd>{{ project.get_status_display }}</dd>
+    <dt>创建时间</dt><dd>{{ project.created_at|date:"Y-m-d H:i" }}</dd>
+  </dl>
+</div>
+
+<div class="card">
+  <h3>项目阶段</h3>
+  {% for s in project.stages.all %}
+  <div class="stage-block">
+    <div class="stage-head">
+      <a class="stage-link" href="{% url 'dashboard:stage_update' s.pk %}?next={{ request.path }}" title="编辑阶段">{{ s.name|default:"未命名" }}</a>
+      <span class="muted">{{ s.created_at|date:"Y-m-d H:i" }}</span>
+    </div>
+    {% if s.image_0 or s.image_1 or s.image_2 %}
+    <div class="thumb-list">
+      {% if s.image_0 %}<div class="thumb"><img src="{{ s.image_0 }}" alt="图片1"></div>{% endif %}
+      {% if s.image_1 %}<div class="thumb"><img src="{{ s.image_1 }}" alt="图片2"></div>{% endif %}
+      {% if s.image_2 %}<div class="thumb"><img src="{{ s.image_2 }}" alt="图片3"></div>{% endif %}
+    </div>
+    {% endif %}
+    {% if s.description %}<p class="stage-desc-text">{{ s.description|linebreaksbr }}</p>{% endif %}
+  </div>
+  {% empty %}
+  <p class="empty">暂无阶段，点击右上角“＋ 添加阶段”开始记录项目进度。</p>
+  {% endfor %}
+</div>
+{% endblock %}

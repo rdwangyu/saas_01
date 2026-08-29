@@ -1,15 +1,8 @@
-"""公司管理员租户后台（/dashboard/）表单。
-
-员工用手机号+密码登录，身份存 session['staff_id']；所有表单按当前员工所属公司隔离。
-"""
-
 from urllib.parse import unquote, urlparse
 
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.files.storage import default_storage
-from django.forms.formsets import DELETION_FIELD_NAME
-from django.forms.models import BaseInlineFormSet
 
 from .widgets import OssUrlInput
 
@@ -24,7 +17,6 @@ from .models import (
 
 
 def get_current_staff(request):
-    """从 session 读取当前登录员工；未登录或已停用返回 None。"""
     session = getattr(request, "session", None)
     staff_id = session.get("staff_id") if session else None
     if not staff_id:
@@ -43,12 +35,6 @@ class BaseDashboardForm(forms.ModelForm):
 
     def _current_staff(self):
         return get_current_staff(self.request)
-
-    @staticmethod
-    def _delete_oss_url(url):
-        path = unquote(urlparse(url).path).lstrip("/")
-        if path:
-            default_storage.delete(path)
 
 
 class DashboardLoginForm(forms.Form):
@@ -137,27 +123,6 @@ class ProjectStageForm(forms.ModelForm):
             f"image_{i}": OssUrlInput(accept="image/*", dir="company_project_progress")
             for i in range(3)
         }
-
-
-class StageInlineFormSet(BaseInlineFormSet):
-    """把 DELETE 从隐藏框改成可见复选框，便于模板里做勾选删除。"""
-
-    def add_fields(self, form, index):
-        super().add_fields(form, index)
-        delete_field = form.fields.get(DELETION_FIELD_NAME)
-        if delete_field is not None:
-            delete_field.widget = forms.CheckboxInput()
-
-
-StageFormSet = forms.inlineformset_factory(
-    ProjectProgress,
-    ProjectStage,
-    form=ProjectStageForm,
-    formset=StageInlineFormSet,
-    extra=1,
-    can_delete=True,
-    can_delete_extra=False,
-)
 
 
 class StaffPasswordForm(forms.Form):

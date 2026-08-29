@@ -540,6 +540,56 @@ input[disabled], select[disabled], textarea[disabled] {
 .badge.active { background: var(--ok-soft); color: var(--ok); }
 .badge.inactive { background: var(--danger-soft); color: var(--danger); }
 
+/* 项目列表中的阶段标签 */
+.stage-link {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  padding: 1px 10px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-decoration: none;
+}
+.stage-link:hover { background: #e0e7ff; text-decoration: none; }
+
+/* ========== 项目详情页 ========== */
+.detail-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.detail-head h3 { margin: 0; overflow-wrap: anywhere; }
+.detail-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* 各阶段之间用分割线区分，不再用方框 */
+.stage-block {
+  border: none;
+  border-bottom: 1px solid var(--border-soft);
+  padding: 16px 0;
+  margin: 0;
+  background: transparent;
+}
+.stage-block:first-child { padding-top: 0; }
+.stage-block:last-child { border-bottom: none; padding-bottom: 0; }
+.stage-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.stage-head .stage-link { margin: 0; font-size: 14px; max-width: 100%; overflow-wrap: anywhere; }
+.stage-desc-text {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .errorlist { list-style: none; margin: 6px 0 0; padding: 0; color: var(--danger); font-size: 13px; }
 
 /* ========== 图片 ========== */
@@ -617,8 +667,15 @@ img.cover-sm {
   margin-bottom: 14px;
   background: #fafbfc;
 }
-.stage-formset .stage-block .delete-row { color: var(--danger); font-size: 13px; cursor: pointer; }
-.stage-formset .delete-row input { margin-right: 4px; }
+.stage-formset .stage-block .stage-name-row { margin-bottom: 8px; }
+.stage-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 0 28px;
+}
+.stage-grid .form-row { margin-bottom: 14px; }
+.stage-grid .stage-imgs .form-row:last-child { margin-bottom: 0; }
+.stage-grid .stage-desc textarea { min-height: 176px; }
 
 /* ========== 确认删除 ========== */
 .confirm-delete-box {
@@ -649,7 +706,7 @@ img.cover-sm {
 /* ========== 客户详情 ========== */
 .detail-rows { display: grid; grid-template-columns: 120px 1fr; row-gap: 12px; column-gap: 16px; font-size: 14px; }
 .detail-rows dt { color: var(--muted); font-size: 13px; }
-.detail-rows dd { margin: 0; color: var(--text); }
+.detail-rows dd { margin: 0; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
 
 /* ========== 操作按钮组（表单底部） ========== */
 .form-actions {
@@ -672,4 +729,6 @@ img.cover-sm {
   .content { padding: 20px 16px 40px; }
   .topbar { padding: 0 16px; }
   .form-grid { grid-template-columns: 1fr; }
+  .stage-grid { grid-template-columns: 1fr; }
+  .stage-grid .stage-desc { margin-top: 12px; }
 }

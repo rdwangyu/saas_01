@@ -1,10 +1,3 @@
-"""视图：/dashboard/ 后台（员工手机号+密码登录 + 公司隔离）与 /api/ 前台（公开 + 订单绑定）API。
-
-后台：员工用手机号+密码登录，身份存 session['staff_id']；数据按当前员工所属公司隔离，
-有 status 的模型只显示 ACTIVE。删除语义：员工软删（status=INACTIVE）。
-前台：公开只读接口 + 小程序凭订单编号绑定项目。
-"""
-
 import base64
 import json
 from urllib.parse import quote
@@ -14,7 +7,7 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q
 from django.http import HttpResponseRedirect, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.utils import timezone
 from django.views import View
@@ -37,7 +30,7 @@ from .forms_dashboard import (
     CustomerForm,
     DashboardLoginForm,
     ProjectForm,
-    StageFormSet,
+    ProjectStageForm,
     StaffPasswordForm,
     get_current_staff,
 )
@@ -48,6 +41,7 @@ from .models import (
     Company,
     Customer,
     ProjectProgress,
+    ProjectStage,
     Staff,
 )
 from .serializers import (
@@ -60,11 +54,7 @@ from .wechat import WechatError, generate_company_code
 # ============================================================
 # 后台 dashboard（/dashboard/）
 # ============================================================
-
-
 class CompanyScopedViewMixin:
-    """租户后台基类：手机号+密码登录 + 按当前员工所属公司隔离。"""
-
     login_url = reverse_lazy("dashboard:login")
 
     def _current_staff(self):
@@ -92,9 +82,6 @@ class CompanyScopedViewMixin:
         return obj
 
     def form_valid(self, form):
-        # 删除确认表单等无 instance，仅对 ModelForm 设置公司
-        # 注意：新对象 FK 未赋值时访问 instance.company 会抛异常，hasattr 返回 False，
-        # 因此用 company_id（普通整型属性）判断模型是否有该字段。
         instance = getattr(form, "instance", None)
         if instance is not None and hasattr(instance, "company_id"):
             instance.company = self._current_staff().company
@@ -112,10 +99,15 @@ class CompanyScopedViewMixin:
         ctx["current_staff"] = self._current_staff()
         return ctx
 
+    def _safe_next(self, default):
+        """返回表单保存/取消后的回跳地址：仅接受站内路径，防开放重定向。"""
+        next_url = self.request.GET.get("next", "").strip()
+        if next_url.startswith("/") and not next_url.startswith("//"):
+            return next_url
+        return default
+
 
 class DashboardLoginView(View):
-    """手机号 + 密码登录，身份写 session['staff_id']。"""
-
     template_name = "dashboard/login.html"
 
     def dispatch(self, request, *args, **kwargs):
@@ -238,10 +230,10 @@ class CaseDeleteView(CompanyScopedViewMixin, DeleteView):
     template_name = "dashboard/confirm_delete.html"
     success_url = reverse_lazy("dashboard:case_list")
 
-    def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
-        obj.delete()  # 软删：status=INACTIVE
-        messages.success(request, "案例已删除")
+    def form_valid(self, form):
+        # Django 6 的 DeleteView 走 form_valid，不调用视图层的 delete()
+        self.object.delete()  # 软删：status=INACTIVE
+        messages.success(self.request, "案例已删除")
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -266,25 +258,11 @@ class ProjectCreateView(CompanyScopedViewMixin, CreateView):
     template_name = "dashboard/project_form.html"
 
     def get_success_url(self):
-        return reverse_lazy("dashboard:project_update", kwargs={"pk": self.object.pk})
+        return reverse_lazy("dashboard:project_list")
 
-    def get_context_data(self, **kwargs):
-        if "stage_formset" not in kwargs:
-            kwargs["stage_formset"] = StageFormSet(instance=getattr(self, "object", None))
-        return super().get_context_data(**kwargs)
-
-    def post(self, request, *args, **kwargs):
-        self.object = None
-        form = self.get_form()
-        formset = StageFormSet(request.POST, request.FILES)
-        if form.is_valid() and formset.is_valid():
-            form.instance.company = self._current_staff().company
-            self.object = form.save()
-            formset.instance = self.object
-            formset.save()
-            messages.success(request, "项目已创建")
-            return HttpResponseRedirect(self.get_success_url())
-        return self.render_to_response(self.get_context_data(form=form, stage_formset=formset))
+    def form_valid(self, form):
+        messages.success(self.request, "项目已创建")
+        return super().form_valid(form)
 
 
 class ProjectUpdateView(CompanyScopedViewMixin, UpdateView):
@@ -293,27 +271,13 @@ class ProjectUpdateView(CompanyScopedViewMixin, UpdateView):
     template_name = "dashboard/project_form.html"
 
     def get_success_url(self):
-        return reverse_lazy("dashboard:project_update", kwargs={"pk": self.object.pk})
+        # 从详情页进入则回详情页；否则（从列表进入）回列表
+        default = reverse_lazy("dashboard:project_detail", kwargs={"pk": self.object.pk})
+        return self._safe_next(default)
 
-    def get_context_data(self, **kwargs):
-        if "stage_formset" not in kwargs:
-            data = self.request.POST if self.request.method == "POST" else None
-            files = self.request.FILES if self.request.method == "POST" else None
-            kwargs["stage_formset"] = StageFormSet(
-                data, files, instance=getattr(self, "object", None)
-            )
-        return super().get_context_data(**kwargs)
-
-    def post(self, request, *args, **kwargs):
-        self.object = self.get_object()
-        form = self.get_form()
-        formset = StageFormSet(request.POST, request.FILES, instance=self.object)
-        if form.is_valid() and formset.is_valid():
-            self.object = form.save()
-            formset.save()
-            messages.success(request, "项目已更新")
-            return HttpResponseRedirect(self.get_success_url())
-        return self.render_to_response(self.get_context_data(form=form, stage_formset=formset))
+    def form_valid(self, form):
+        messages.success(self.request, "项目已更新")
+        return super().form_valid(form)
 
 
 class ProjectDeleteView(CompanyScopedViewMixin, DeleteView):
@@ -321,11 +285,80 @@ class ProjectDeleteView(CompanyScopedViewMixin, DeleteView):
     template_name = "dashboard/confirm_delete.html"
     success_url = reverse_lazy("dashboard:project_list")
 
-    def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
-        obj.delete()  # 软删：stages 不触碰，随父项目被过滤隐藏
-        messages.success(request, "项目已删除")
+    def form_valid(self, form):
+        # Django 6 的 DeleteView 走 form_valid；硬删除连带移除阶段并清理 OSS 图片
+        # （移除阶段目前只能通过删除整个项目实现）
+        self.object.hard_delete()
+        messages.success(self.request, "项目已删除")
         return HttpResponseRedirect(self.get_success_url())
+
+
+class ProjectDetailView(CompanyScopedViewMixin, DetailView):
+    """项目详情：展示全部项目阶段，并提供“添加阶段”入口。"""
+
+    model = ProjectProgress
+    template_name = "dashboard/project_detail.html"
+    context_object_name = "project"
+
+    def get_queryset(self):
+        return super().get_queryset().select_related("customer", "staff").prefetch_related("stages")
+
+
+class ProjectStageCreateView(CompanyScopedViewMixin, CreateView):
+    """新增阶段：从项目列表进入独立页面编辑，保存后返回项目列表。"""
+
+    model = ProjectStage
+    form_class = ProjectStageForm
+    template_name = "dashboard/project_stage_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        staff = self._current_staff()
+        if staff is None:
+            return HttpResponseRedirect(self.login_url)
+        self.project = get_object_or_404(
+            ProjectProgress, pk=kwargs["pk"], company_id=staff.company_id
+        )
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["project"] = self.project
+        return ctx
+
+    def form_valid(self, form):
+        form.instance.project = self.project
+        messages.success(self.request, "阶段已添加")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        default = reverse_lazy("dashboard:project_detail", kwargs={"pk": self.project.pk})
+        return self._safe_next(default)
+
+
+class ProjectStageUpdateView(CompanyScopedViewMixin, UpdateView):
+    """编辑阶段：独立页面编辑后返回项目列表。"""
+
+    model = ProjectStage
+    form_class = ProjectStageForm
+    template_name = "dashboard/project_stage_form.html"
+
+    def get_queryset(self):
+        return ProjectStage.objects.filter(
+            project__company_id=self._current_staff().company_id
+        )
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["project"] = self.object.project
+        return ctx
+
+    def form_valid(self, form):
+        messages.success(self.request, "阶段已更新")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        default = reverse_lazy("dashboard:project_detail", kwargs={"pk": self.object.project_id})
+        return self._safe_next(default)
 
 
 class CustomerListView(CompanyScopedViewMixin, ListView):
@@ -335,7 +368,6 @@ class CustomerListView(CompanyScopedViewMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        # 按当前员工所属公司过滤（CompanyScopedViewMixin 已按 company 过滤）
         qs = super().get_queryset()
         q = self.request.GET.get("q", "").strip()
         if q:
@@ -372,10 +404,10 @@ class CustomerDeleteView(CompanyScopedViewMixin, DeleteView):
     template_name = "dashboard/confirm_delete.html"
     success_url = reverse_lazy("dashboard:customer_list")
 
-    def delete(self, request, *args, **kwargs):
-        obj = self.get_object()
-        obj.delete()
-        messages.success(request, "客户已删除")
+    def form_valid(self, form):
+        # Django 6 的 DeleteView 走 form_valid，不调用视图层的 delete()
+        self.object.delete()
+        messages.success(self.request, "客户已删除")
         return HttpResponseRedirect(self.get_success_url())
 
 
@@ -387,7 +419,6 @@ class CustomerDetailView(CompanyScopedViewMixin, DetailView):
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
         qs = self.object.projects.select_related("company", "staff").order_by("-created_at")
-        # 客户归属本公司，关联项目只展示本公司的
         qs = qs.filter(company_id=self._current_staff().company_id)
         ctx["projects"] = qs
         return ctx

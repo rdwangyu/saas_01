@@ -15,15 +15,11 @@ class CommonStatus(models.TextChoices):
 
 
 class SoftDeleteQuerySet(models.QuerySet):
-    """软删除：将 status 改为 INACTIVE 代替真删除。"""
-
     def delete(self):
         self.update(status=CommonStatus.INACTIVE)
 
 
 class SoftDeleteManager(models.Manager):
-    """返回 SoftDeleteQuerySet 的管理器。"""
-
     def get_queryset(self):
         return SoftDeleteQuerySet(self.model, using=self._db)
 
@@ -375,7 +371,6 @@ class ProjectProgress(models.Model):
         self.save(update_fields=["status"])
 
     def hard_delete(self, *args, **kwargs):
-        # ProjectStage 图片需逐条删除以清理 OSS（FK 级联 raw delete 不会触发 stage.delete()）
         for stage in self.stages.all():
             stage.delete()
         super().delete(*args, **kwargs)

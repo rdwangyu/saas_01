@@ -1,0 +1,50 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}{% if form.instance.pk %}编辑阶段{% else %}添加阶段{% endif %}{% endblock %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" class="form-box">
+  {% csrf_token %}
+
+  <div class="fieldset">
+    <h3>{% if form.instance.pk %}编辑阶段{% else %}添加阶段{% endif %} · {{ project.project_name }}</h3>
+    <!-- 第一行：阶段名称 -->
+    <div class="form-row stage-name-row">
+      {{ form.name.label_tag }}{% if form.name.field.required %}<span class="req">*</span>{% endif %}
+      {{ form.name }}
+      {% if form.name.errors %}{{ form.name.errors }}{% endif %}
+    </div>
+    <!-- 第二行：左列三张图片上下排列，右列阶段描述 -->
+    <div class="stage-grid">
+      <div class="stage-imgs">
+        <div class="form-row">
+          {{ form.image_0.label_tag }}
+          {{ form.image_0 }}
+          {% if form.image_0.errors %}{{ form.image_0.errors }}{% endif %}
+        </div>
+        <div class="form-row">
+          {{ form.image_1.label_tag }}
+          {{ form.image_1 }}
+          {% if form.image_1.errors %}{{ form.image_1.errors }}{% endif %}
+        </div>
+        <div class="form-row">
+          {{ form.image_2.label_tag }}
+          {{ form.image_2 }}
+          {% if form.image_2.errors %}{{ form.image_2.errors }}{% endif %}
+        </div>
+      </div>
+      <div class="stage-desc">
+        <div class="form-row">
+          {{ form.description.label_tag }}
+          {{ form.description }}
+          {% if form.description.errors %}{{ form.description.errors }}{% endif %}
+        </div>
+      </div>
+    </div>
+    {% if form.non_field_errors %}{{ form.non_field_errors }}{% endif %}
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn">保存</button>
+    <a href="{% if request.GET.next %}{{ request.GET.next }}{% else %}{% url 'dashboard:project_detail' project.pk %}{% endif %}" class="btn secondary">取消</a>
+  </div>
+</form>
+{% endblock %}

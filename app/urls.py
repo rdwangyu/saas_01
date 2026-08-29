@@ -1,5 +1,3 @@
-"""URL 配置：后台 dashboard 与前台 api 两组路由，供根 URLconf 分别挂载。"""
-
 from django.urls import path
 
 from . import views
@@ -18,6 +16,9 @@ dashboard_patterns = [
     path("projects/new/", views.ProjectCreateView.as_view(), name="project_create"),
     path("projects/<int:pk>/", views.ProjectUpdateView.as_view(), name="project_update"),
     path("projects/<int:pk>/delete/", views.ProjectDeleteView.as_view(), name="project_delete"),
+    path("projects/<int:pk>/detail/", views.ProjectDetailView.as_view(), name="project_detail"),
+    path("projects/<int:pk>/stages/new/", views.ProjectStageCreateView.as_view(), name="stage_create"),
+    path("stages/<int:pk>/", views.ProjectStageUpdateView.as_view(), name="stage_update"),
     path("customers/", views.CustomerListView.as_view(), name="customer_list"),
     path("customers/new/", views.CustomerCreateView.as_view(), name="customer_create"),
     path("customers/<int:pk>/", views.CustomerUpdateView.as_view(), name="customer_update"),

@@ -59,10 +59,10 @@ class CaseSerializer(serializers.ModelSerializer):
     def validate_cover(self, value):
         if value:
             ext = value.name.rsplit(".", 1)[-1].lower() if "." in value.name else ""
-            allowed = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tiff", "svg"]
+            allowed = ["jpg", "jpeg", "png"]
             if ext not in allowed:
                 raise serializers.ValidationError(
-                    "封面图仅支持图片格式（jpg/jpeg/png/gif/webp/bmp/tiff/svg）"
+                    "封面图仅支持图片格式(jpg/jpeg/png)"
                 )
         return value
 

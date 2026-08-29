@@ -11,10 +11,9 @@
     {% endif %}
   </div>
   <div class="oss-actions">
-    <label class="btn secondary sm" style="cursor:pointer">选择文件
+    <label class="btn sm" style="cursor:pointer">上传
       <input type="file" id="oss-{{ widget.name }}-file" accept="{{ widget.accept }}" style="display:none">
     </label>
-    <span class="btn sm" id="oss-{{ widget.name }}-btn" style="cursor:pointer">上传</span>
   </div>
   <div class="oss-status" id="oss-{{ widget.name }}-status" style="font-size:13px;margin-top:6px"></div>
 </div>
@@ -26,7 +25,6 @@
   var hidden = document.getElementById('oss-{{ widget.name }}')
   var preview = document.getElementById('oss-{{ widget.name }}-preview')
   var fileInput = document.getElementById('oss-{{ widget.name }}-file')
-  var btn = document.getElementById('oss-{{ widget.name }}-btn')
   var status = document.getElementById('oss-{{ widget.name }}-status')
   var isVideo = box.dataset.accept.indexOf('video') === 0
 
@@ -60,7 +58,6 @@
       showStatus('上传失败：' + (e.message || '网络异常'))
     }
   }
-  btn.addEventListener('click', function () { fileInput.click() })
   fileInput.addEventListener('change', function () {
     if (fileInput.files && fileInput.files[0]) upload(fileInput.files[0])
   })

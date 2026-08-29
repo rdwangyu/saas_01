@@ -14,25 +14,6 @@ from .models import (
 )
 
 
-class SuperuserOnlyMixin:
-    """admin 仅超级管理员可用；公司管理员走 /dashboard/ 租户后台。"""
-
-    def has_module_permission(self, request):
-        return request.user.is_superuser
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    def has_add_permission(self, request):
-        return request.user.is_superuser
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_superuser
-
-
 def image_preview(obj, field_name, width=80):
     img = getattr(obj, field_name, None)
     if img:
@@ -45,22 +26,8 @@ def image_preview(obj, field_name, width=80):
     return "-"
 
 
-class CompanyForm(forms.ModelForm):
-    class Meta:
-        model = Company
-        fields = "__all__"
-        widgets = {
-            "logo": OssUrlInput(accept="image/*", dir="company_logo"),
-        }
-
-    def clean_credit_code(self):
-        val = self.cleaned_data.get("credit_code")
-        return val.upper() if val else val
-
-
 @admin.register(Company)
-class CompanyAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
-    form = CompanyForm
+class CompanyAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "logo_preview",
@@ -141,9 +108,7 @@ class CompanyAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(Customer)
-class CustomerAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
-    """客户表：归属于公司，由各公司管理员维护。"""
-
+class CustomerAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "name",
@@ -180,8 +145,6 @@ class CustomerAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
 
 
 class StaffAdminForm(forms.ModelForm):
-    """员工表单：密码用 password1/password2 录入并哈希保存，仅超管可创建/改密码。"""
-
     password1 = forms.CharField(label="密码", widget=forms.PasswordInput, required=False)
     password2 = forms.CharField(label="确认密码", widget=forms.PasswordInput, required=False)
 
@@ -211,9 +174,7 @@ class StaffAdminForm(forms.ModelForm):
 
 
 @admin.register(Staff)
-class StaffAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
-    """员工表（手机号+密码登录）。仅超管创建员工、设置密码；员工可在后台自助改密。"""
-
+class StaffAdmin(admin.ModelAdmin):
     form = StaffAdminForm
     list_display = [
         "name",
@@ -265,7 +226,7 @@ class StaffAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
 
 
 @admin.register(Case)
-class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
+class CaseAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "cover_preview",
@@ -313,16 +274,6 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         return super().get_queryset(request).select_related("company")
 
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj=obj, **kwargs)
-
-        if "cover" in form.base_fields:
-            form.base_fields["cover"].widget = OssUrlInput(accept="image/*", dir="company_case")
-        if "video" in form.base_fields:
-            form.base_fields["video"].widget = OssUrlInput(accept="video/*", dir="company_case")
-
-        return form
-
     def cover_preview(self, obj):
         return image_preview(obj, "cover", width=80)
 
@@ -337,36 +288,6 @@ class CaseAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
 
     def delete_model(self, request, obj):
         obj.hard_delete()
-
-
-class ProjectStageInlineForm(forms.ModelForm):
-    class Meta:
-        model = ProjectStage
-        fields = ["name", "image_0", "image_1", "image_2", "description"]
-        widgets = {
-            f"image_{i}": OssUrlInput(accept="image/*", dir="company_project_progress")
-            for i in range(3)
-        }
-
-
-class ProjectStageInline(admin.StackedInline):
-    model = ProjectStage
-    form = ProjectStageInlineForm
-    extra = 1
-    can_delete = False
-    fieldsets = (
-        (
-            None,
-            {
-                "fields": (
-                    ("name",),
-                    ("image_0", "image_1", "image_2"),
-                    "description",
-                ),
-            },
-        ),
-    )
-    ordering = ("created_at",)
 
 
 class ProjectProgressForm(forms.ModelForm):
@@ -384,7 +305,7 @@ class ProjectProgressForm(forms.ModelForm):
 
     
 @admin.register(ProjectProgress)
-class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
+class ProjectProgressAdmin(admin.ModelAdmin):
     form = ProjectProgressForm
     list_display = [
         "id",
@@ -408,9 +329,7 @@ class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
         "staff__name",
     ]
     readonly_fields = ["created_at"]
-    inlines = [ProjectStageInline]
     date_hierarchy = "created_at"
-
     fieldsets = (
         (
             "基本信息",
@@ -446,17 +365,90 @@ class ProjectProgressAdmin(SuperuserOnlyMixin, admin.ModelAdmin):
     stage_display.short_description = "当前进度"
 
     def delete_model(self, request, obj):
-        # ProjectStage 无 status，FK 级联 raw delete 会遗留 OSS 文件，先逐条硬删清文件
-        for stage in obj.stages.all():
-            stage.delete()
         obj.hard_delete()
 
     def delete_queryset(self, request, queryset):
         for obj in queryset:
-            for stage in obj.stages.all():
-                stage.delete()
             obj.hard_delete()
 
+
+class ProjectStageAdminForm(forms.ModelForm):
+    class Meta:
+        model = ProjectStage
+        fields = '__all__'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 编辑时按当前阶段所属公司过滤项目下拉框
+        if self.instance and self.instance.pk:
+            company_id = self.instance.project.company_id
+            self.fields["project"].queryset = ProjectProgress.objects.filter(company_id=company_id)
+
+
+@admin.register(ProjectStage)
+class ProjectStageAdmin(admin.ModelAdmin):
+    form = ProjectStageAdminForm
+    list_display = [
+        "id",
+        "project",
+        "name",
+        "image_0_preview",
+        "image_1_preview",
+        "image_2_preview",
+        "created_at",
+    ]
+    list_display_links = ["id", "name"]
+    list_filter = ["project__company", "created_at"]
+    search_fields = ["name", "project__project_name", "project__project_no"]
+    readonly_fields = ["created_at"]
+    date_hierarchy = "created_at"
+    ordering = ("-created_at",)
+
+    fieldsets = (
+        (
+            "所属项目",
+            {
+                "fields": ("project",),
+            },
+        ),
+        (
+            "阶段内容",
+            {
+                "fields": (("name",), ("image_0", "image_1", "image_2"), "description"),
+            },
+        ),
+        (
+            "时间",
+            {
+                "fields": ("created_at",),
+            },
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("project", "project__company")
+
+    def image_0_preview(self, obj):
+        return image_preview(obj, "image_0", width=60)
+
+    image_0_preview.short_description = "图片1"
+
+    def image_1_preview(self, obj):
+        return image_preview(obj, "image_1", width=60)
+
+    image_1_preview.short_description = "图片2"
+
+    def image_2_preview(self, obj):
+        return image_preview(obj, "image_2", width=60)
+
+    image_2_preview.short_description = "图片3"
+
+    def delete_model(self, request, obj):
+        obj.delete()  # 模型自定义 delete：硬删并清理 OSS 图片
+
+    def delete_queryset(self, request, queryset):
+        for obj in queryset:
+            obj.delete()
 
 admin.site.site_header = "白云企业管理"
 admin.site.site_title = "白云企业管理"
