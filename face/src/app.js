@@ -108,9 +108,14 @@ App({
     }
   },
 
-  /** 绑定订单：弹窗输入订单编号 → 后端校验 → 成功写入全局 + 缓存 */
+  /** 绑定订单：弹窗输入订单编号 → 后端校验（仅限当前公司）→ 成功写入全局 + 缓存 */
   bindOrder() {
     return new Promise((resolve) => {
+      const companyId = this.getCurrentCompanyId()
+      if (!companyId) {
+        wx.showToast({ title: '请先扫码进入公司', icon: 'none' })
+        return resolve(false)
+      }
       wx.showModal({
         title: '绑定订单',
         editable: true,
@@ -125,7 +130,7 @@ App({
           try {
             const project = await request('/bind-project/', {
               method: 'POST',
-              data: { project_no: orderNo },
+              data: { project_no: orderNo, company: companyId },
             })
             this.setBound(orderNo, project.company, project)
             wx.showToast({ title: '绑定成功', icon: 'success' })

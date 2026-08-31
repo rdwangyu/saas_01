@@ -48,7 +48,10 @@ Page({
     try {
       const project = await request('/bind-project/', {
         method: 'POST',
-        data: { project_no: app.globalData.orderNo },
+        data: {
+          project_no: app.globalData.orderNo,
+          company: app.getCurrentCompanyId(),
+        },
       })
       app.setBound(app.globalData.orderNo, project.company, project)
       this.setData({

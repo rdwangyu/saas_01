@@ -495,12 +495,23 @@ class BindProjectView(APIView):
         project_no = (request.data.get("project_no") or "").strip()
         if not project_no:
             return Response({"detail": "请输入订单编号"}, status=status.HTTP_400_BAD_REQUEST)
+        # 只能绑定请求方所在公司的订单，杜绝跨公司查询
+        company_id = request.data.get("company")
+        if not company_id:
+            return Response({"detail": "请先进入公司后再绑定订单"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            company_id = int(company_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "公司参数无效"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             project = ProjectProgress.objects.select_related("company", "customer", "staff").get(
-                project_no=project_no, status=CommonStatus.ACTIVE
+                project_no=project_no, status=CommonStatus.ACTIVE, company_id=company_id
             )
         except ProjectProgress.DoesNotExist:
-            return Response({"detail": "订单编号不正确"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "订单编号不正确，或不属于当前公司"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         return Response(ProjectProgressSerializer(project).data)
 
 
