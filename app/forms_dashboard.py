@@ -1,19 +1,9 @@
-from urllib.parse import unquote, urlparse
-
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.files.storage import default_storage
 
+from .models import (Case, Company, Customer, ProjectProgress, ProjectStage,
+                     Staff)
 from .widgets import OssUrlInput
-
-from .models import (
-    Case,
-    Company,
-    Customer,
-    ProjectProgress,
-    ProjectStage,
-    Staff,
-)
 
 
 def get_current_staff(request):

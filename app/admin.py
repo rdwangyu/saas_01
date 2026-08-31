@@ -2,16 +2,8 @@ from django import forms
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .widgets import OssUrlInput
-
-from .models import (
-    Company,
-    Customer,
-    Staff,
-    Case,
-    ProjectProgress,
-    ProjectStage,
-)
+from .models import (Case, Company, Customer, ProjectProgress, ProjectStage,
+                     Staff)
 
 
 def image_preview(obj, field_name, width=80):

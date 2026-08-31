@@ -3,7 +3,6 @@ from urllib.parse import unquote, urlparse
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.files.storage import default_storage
 from django.db import models
-from django.utils.deconstruct import deconstructible
 from django.utils.text import slugify
 
 MAX_SLUG_LEN = 16
