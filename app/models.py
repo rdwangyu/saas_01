@@ -385,8 +385,6 @@ class ProjectProgress(models.Model):
 
 
 class WechatAccessToken(models.Model):
-    """微信小程序 access_token 缓存（仅存一行，用于生成小程序码）。"""
-
     token = models.CharField("access_token", max_length=512)
     expires_at = models.DateTimeField("过期时间")
 

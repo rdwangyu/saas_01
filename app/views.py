@@ -231,8 +231,7 @@ class CaseDeleteView(CompanyScopedViewMixin, DeleteView):
     success_url = reverse_lazy("dashboard:case_list")
 
     def form_valid(self, form):
-        # Django 6 的 DeleteView 走 form_valid，不调用视图层的 delete()
-        self.object.delete()  # 软删：status=INACTIVE
+        self.object.delete()
         messages.success(self.request, "案例已删除")
         return HttpResponseRedirect(self.get_success_url())
 
@@ -271,7 +270,6 @@ class ProjectUpdateView(CompanyScopedViewMixin, UpdateView):
     template_name = "dashboard/project_form.html"
 
     def get_success_url(self):
-        # 从详情页进入则回详情页；否则（从列表进入）回列表
         default = reverse_lazy("dashboard:project_detail", kwargs={"pk": self.object.pk})
         return self._safe_next(default)
 
@@ -286,16 +284,12 @@ class ProjectDeleteView(CompanyScopedViewMixin, DeleteView):
     success_url = reverse_lazy("dashboard:project_list")
 
     def form_valid(self, form):
-        # Django 6 的 DeleteView 走 form_valid；硬删除连带移除阶段并清理 OSS 图片
-        # （移除阶段目前只能通过删除整个项目实现）
         self.object.hard_delete()
         messages.success(self.request, "项目已删除")
         return HttpResponseRedirect(self.get_success_url())
 
 
 class ProjectDetailView(CompanyScopedViewMixin, DetailView):
-    """项目详情：展示全部项目阶段，并提供“添加阶段”入口。"""
-
     model = ProjectProgress
     template_name = "dashboard/project_detail.html"
     context_object_name = "project"
@@ -305,8 +299,6 @@ class ProjectDetailView(CompanyScopedViewMixin, DetailView):
 
 
 class ProjectStageCreateView(CompanyScopedViewMixin, CreateView):
-    """新增阶段：从项目列表进入独立页面编辑，保存后返回项目列表。"""
-
     model = ProjectStage
     form_class = ProjectStageForm
     template_name = "dashboard/project_stage_form.html"
@@ -336,8 +328,6 @@ class ProjectStageCreateView(CompanyScopedViewMixin, CreateView):
 
 
 class ProjectStageUpdateView(CompanyScopedViewMixin, UpdateView):
-    """编辑阶段：独立页面编辑后返回项目列表。"""
-
     model = ProjectStage
     form_class = ProjectStageForm
     template_name = "dashboard/project_stage_form.html"
@@ -439,8 +429,6 @@ class StaffListView(CompanyScopedViewMixin, ListView):
 
 
 class StaffPasswordChangeView(CompanyScopedViewMixin, View):
-    """员工自助修改自己的密码。"""
-
     template_name = "dashboard/staff_password.html"
 
     def get(self, request):
@@ -462,8 +450,6 @@ class StaffPasswordChangeView(CompanyScopedViewMixin, View):
 
 
 class PublicCompanyList(generics.ListAPIView):
-    """公司列表（启用的公司，免登录只读，供扫码校验/选择公司）"""
-
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = CompanySerializer
@@ -474,9 +460,7 @@ class PublicCompanyList(generics.ListAPIView):
 
 
 class PublicCompanyDetail(generics.RetrieveAPIView):
-    """公司详情（按 id 查询，供索引页/公司简介页免登录展示）"""
-
-    authentication_classes = []  # 客户 token 附加到公开请求时也不参与认证
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
@@ -484,8 +468,6 @@ class PublicCompanyDetail(generics.RetrieveAPIView):
 
 
 class PublicCaseList(generics.ListAPIView):
-    """案例列表（按 ?company=<id> 过滤，免登录只读）"""
-
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = CaseSerializer
@@ -499,8 +481,6 @@ class PublicCaseList(generics.ListAPIView):
 
 
 class PublicCaseDetail(generics.RetrieveAPIView):
-    """案例详情（免登录只读）"""
-
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = CaseSerializer
@@ -508,8 +488,6 @@ class PublicCaseDetail(generics.RetrieveAPIView):
 
 
 class BindProjectView(APIView):
-    """小程序订单绑定：凭项目编号返回项目进度 + 客户 + 公司信息。"""
-
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
@@ -534,8 +512,6 @@ OSS_ALLOWED_DIRS = {"company_case", "company_logo", "company_project_progress"}
 
 
 class OssUploadUrlView(View):
-    """登录员工/超管获取 OSS 直传签名 URL（前端 PUT 上传，只保存 URL）。"""
-
     def dispatch(self, request, *args, **kwargs):
         staff = get_current_staff(request)
         is_admin = request.user.is_authenticated and request.user.is_superuser
@@ -572,8 +548,6 @@ class OssUploadUrlView(View):
 
 
 class QrCodeView(View):
-    """超管专用：选择公司生成小程序码（客户扫码直接进入该公司）。"""
-
     template_name = "qr_tool.html"
 
     def dispatch(self, request, *args, **kwargs):
