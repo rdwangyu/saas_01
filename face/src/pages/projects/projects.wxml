@@ -9,25 +9,80 @@
 
   <view wx:elif="{{loading}}" class="loading">加载中...</view>
 
-  <!-- 已绑定：展示项目 -->
-  <block wx:elif="{{project}}">
-    <view class="project-list">
-      <view class="project-card" bindtap="goDetail" hover-class="project-card-hover">
-        <view class="project-head">
-          <view class="project-name">{{project.project_name}}</view>
-          <view class="stage-badge {{project.current_stage_name === '未开始' ? 'stage-badge-muted' : ''}}">
-            {{project.current_stage_name || '未开始'}}
-          </view>
+  <!-- 已绑定：一个客户只有一个项目，直接展示详情 -->
+  <block wx:elif="{{detail}}">
+    <!-- 项目概要 -->
+    <view class="card head-card">
+      <view class="head-name">{{detail.project_name}}</view>
+      <view class="head-stage">
+        当前进度：
+        <text class="head-stage-strong">{{detail.current_stage_name || '未开始'}}</text>
+      </view>
+    </view>
+
+    <!-- 项目信息 -->
+    <view class="card">
+      <view class="info-row">
+        <view class="info-label">订单编号</view>
+        <view class="info-value">{{detail.project_no}}</view>
+      </view>
+      <view class="info-row">
+        <view class="info-label">对接人</view>
+        <view class="info-value">{{detail.staff_name || '未分配'}}</view>
+      </view>
+      <view
+        class="info-row"
+        wx:if="{{detail.staff_phone}}"
+        bindtap="callPhone"
+        data-phone="{{detail.staff_phone}}"
+      >
+        <view class="info-label">对接人电话</view>
+        <view class="info-value link">📞 {{detail.staff_phone}}</view>
+      </view>
+      <view class="info-row">
+        <view class="info-label">项目地址</view>
+        <view class="info-value">{{detail.address}}</view>
+      </view>
+      <view class="info-row">
+        <view class="info-label">创建时间</view>
+        <view class="info-value">{{detail.createdText}}</view>
+      </view>
+    </view>
+
+    <!-- 阶段时间线 -->
+    <view class="section-title">项目阶段（{{detail.stages.length}}）</view>
+
+    <view class="timeline" wx:if="{{detail.stages.length}}">
+      <view class="tl-item" wx:for="{{detail.stages}}" wx:key="id" wx:for-index="stageIdx">
+        <view class="tl-left">
+          <view class="tl-dot"></view>
+          <view class="tl-line" wx:if="{{stageIdx < detail.stages.length - 1}}"></view>
         </view>
-        <view class="project-meta project-address">订单编号：{{project.project_no}}</view>
-        <view class="project-meta project-address">地址：{{project.address}}</view>
-        <view class="project-foot">
-          <text class="project-date">{{project.createdText}}</text>
-          <text class="project-detail-link">查看详情 ›</text>
+        <view class="tl-content card">
+          <view class="tl-name">{{item.name || '阶段 ' + (stageIdx + 1)}}</view>
+          <view class="tl-desc" wx:if="{{item.description}}">{{item.description}}</view>
+          <view class="tl-imgs" wx:if="{{item.images.length}}">
+            <image
+              class="tl-img"
+              wx:for="{{item.images}}"
+              wx:for-item="img"
+              wx:key="*this"
+              src="{{img}}"
+              mode="aspectFill"
+              lazy-load
+              data-index="{{stageIdx}}"
+              data-img="{{img}}"
+              bindtap="previewStage"
+            />
+          </view>
+          <view class="tl-time">{{item.updatedText}}</view>
         </view>
       </view>
     </view>
 
+    <empty wx:else text="该项目暂无阶段记录" icon="🗓" />
+
+    <!-- 刷新失败：保留已展示的详情，底部提示重试 -->
     <empty
       wx:if="{{error}}"
       text="{{error}}"
@@ -37,4 +92,15 @@
       bind:action="loadProject"
     />
   </block>
+
+  <!-- 已绑定但详情加载失败 -->
+  <view wx:elif="{{error}}" class="page">
+    <empty
+      text="{{error}}"
+      icon="⚠️"
+      showAction="{{true}}"
+      actionText="重新加载"
+      bind:action="loadProject"
+    />
+  </view>
 </view>

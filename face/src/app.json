@@ -5,7 +5,6 @@
     "pages/cases/cases",
     "pages/case-detail/case-detail",
     "pages/projects/projects",
-    "pages/project-detail/project-detail",
     "pages/users/users"
   ],
   "window": {
