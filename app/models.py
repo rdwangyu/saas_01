@@ -179,7 +179,7 @@ class Staff(models.Model):
 class Case(models.Model):
     company = models.ForeignKey(
         Company,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="cases",
         verbose_name="所属公司",
     )
@@ -314,13 +314,13 @@ class ProjectStage(models.Model):
 class ProjectProgress(models.Model):
     company = models.ForeignKey(
         Company,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="projects",
         verbose_name="所属公司",
     )
     customer = models.ForeignKey(
         Customer,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="projects",
@@ -329,7 +329,7 @@ class ProjectProgress(models.Model):
     )
     staff = models.ForeignKey(
         Staff,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="projects",
@@ -380,6 +380,7 @@ class ProjectProgress(models.Model):
         for stage in self.stages.all().order_by("-created_at"):
             if stage.image_0 or stage.image_1 or stage.image_2 or stage.description:
                 last = stage
+                break
         return last.name if last is not None else "未开始"
 
 
