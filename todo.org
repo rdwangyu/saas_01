@@ -9,10 +9,7 @@
 12. logo dashboard, admin will logout
 13. not appear, if company logo has uploaded
 
-14. 验证公司删除，下属的案例和项目是否都删除
-15. 图片换了，就图片会不会删除
-     yes, need to repair
-     
 16. 公司的logo如何删除公司，可能不会被删除
      continue to reconfirm
 8. 再次测试移除功能
+9. pay money issue
