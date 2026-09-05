@@ -1,5 +1,6 @@
 from urllib.parse import unquote, urlparse
 
+import django.utils import timezone
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.files.storage import default_storage
 from django.db import models
@@ -8,14 +9,37 @@ from django.utils.text import slugify
 MAX_SLUG_LEN = 16
 
 
-class CommonStatus(models.TextChoices):
-    ACTIVE = "active", "启用"
-    INACTIVE = "inactive", "停用"
+class BaseModel(models.Model):
+    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+    updated_at = models.DateTimeField("更新时间", auto_now=True)
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
 
+    class Meta:
+        abstract = True
+
+    def delete(self):
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at"])
+
+    def hard_delete(self):
+        super().delete()
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=["deleted_at"])
 
 class SoftDeleteQuerySet(models.QuerySet):
     def delete(self):
-        self.update(status=CommonStatus.INACTIVE)
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+    def restore(self):
+        return self.update(deleted_at=None)
 
 
 class SoftDeleteManager(models.Manager):
@@ -23,16 +47,7 @@ class SoftDeleteManager(models.Manager):
         return SoftDeleteQuerySet(self.model, using=self._db)
 
 
-def _safe_slug(text: str, fallback: str) -> str:
-    """slugify 后截取最多 MAX_SLUG_LEN 个字符，避免文件路径过长"""
-    s = slugify(text, allow_unicode=True)
-    if not s:
-        return fallback
-    return s[:MAX_SLUG_LEN]
-
-
 def _delete_oss_url(url):
-    """把 OSS URL 转成对象路径并从存储中删除。"""
     if not url:
         return
     path = unquote(urlparse(url).path).lstrip("/")
@@ -40,7 +55,7 @@ def _delete_oss_url(url):
         default_storage.delete(path)
 
 
-class Company(models.Model):
+class Company(BaseModel):
     name = models.CharField("公司名称", max_length=200)
     credit_code = models.CharField(
         "社会统一信用代码", max_length=18, help_text="仅系统管理员可编辑"
@@ -51,20 +66,13 @@ class Company(models.Model):
     description = models.TextField("公司简介", blank=True, default="")
     phone = models.CharField("联系电话", max_length=30, default="")
     address = models.CharField("公司地址", max_length=300, default="")
-    status = models.CharField(
-        "状态",
-        max_length=20,
-        choices=CommonStatus.choices,
-        default=CommonStatus.ACTIVE,
-    )
     max_video_size = models.IntegerField(
         "视频大小限制（MB）",
         choices=[(200, "200MB"), (500, "500MB")],
         default=200,
         help_text="影响案例和项目进度的视频上传上限",
     )
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
-    established_date = models.DateField(
+    established_at = models.DateField(
         "成立日期", null=True, blank=True, help_text="公司成立日期"
     )
 
@@ -84,28 +92,16 @@ class Company(models.Model):
                 old = Company.objects.get(pk=self.pk)
                 if old.logo and old.logo != self.logo:
                     _delete_oss_url(old.logo)
-                if (
-                    old.status == CommonStatus.ACTIVE
-                    and self.status == CommonStatus.INACTIVE
-                ):
-                    self.cases.all().update(status=CommonStatus.INACTIVE)
-                    self.projects.all().update(status=CommonStatus.INACTIVE)
             except Company.DoesNotExist:
                 pass
         super().save(*args, **kwargs)
-
-    def delete(self, *args, **kwargs):
-        self.status = CommonStatus.INACTIVE
-        self.save(update_fields=["status"])
 
     @property
     def max_images(self) -> int:
         return 8
 
 
-class Customer(models.Model):
-    """客户：公司服务的人员，归属于某家公司，由该公司管理员增删改查。"""
-
+class Customer(BaseModel):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
@@ -118,7 +114,6 @@ class Customer(models.Model):
     phone = models.CharField("电话", max_length=30, unique=True)
     address = models.CharField("住址", max_length=300, default="")
     contract = models.CharField("合同编号", max_length=100, blank=True, default="")
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     class Meta:
         verbose_name = "客户"
@@ -129,9 +124,7 @@ class Customer(models.Model):
         return f"{self.name}（{self.phone}）"
 
 
-class Staff(models.Model):
-    """公司员工：独立于 admin 认证用户（auth.User）的员工表，手机号+密码登录。"""
-
+class Staff(BaseModel):
     class Role(models.TextChoices):
         ADMIN = "项目负责人", "公司管理员"
 
@@ -155,9 +148,7 @@ class Staff(models.Model):
         choices=Role.choices,
         default=Role.ADMIN,
     )
-    is_active = models.BooleanField("启用", default=True)
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
-    last_login = models.DateTimeField("上次登录时间", null=True, blank=True)
+    last_login_at = models.DateTimeField("上次登录时间", null=True, blank=True)
 
     class Meta:
         db_table = "app_staff"
@@ -176,7 +167,7 @@ class Staff(models.Model):
         return check_password(raw_password, self.password)
 
 
-class Case(models.Model):
+class Case(BaseModel):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
@@ -204,13 +195,6 @@ class Case(models.Model):
     budget = models.DecimalField(
         "预算（万元）", max_digits=10, decimal_places=2, null=True, blank=True
     )
-    status = models.CharField(
-        "状态",
-        max_length=20,
-        choices=CommonStatus.choices,
-        default=CommonStatus.ACTIVE,
-    )
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
 
     objects = SoftDeleteManager()
 
@@ -235,10 +219,6 @@ class Case(models.Model):
                 pass
         super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        self.status = CommonStatus.INACTIVE
-        self.save(update_fields=["status"])
-
     def hard_delete(self, *args, **kwargs):
         for f in ["cover", "video"]:
             val = getattr(self, f, None)
@@ -247,10 +227,10 @@ class Case(models.Model):
         super().delete(*args, **kwargs)
 
 
-class ProjectStage(models.Model):
+class ProjectStage(BaseModel):
     project = models.ForeignKey(
         "ProjectProgress",
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="stages",
         verbose_name="所属项目",
     )
@@ -277,8 +257,6 @@ class ProjectStage(models.Model):
         help_text="OSS 直传后保存的 URL",
     )
     description = models.TextField("阶段描述", blank=True, default="")
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
-    updated_at = models.DateTimeField("更新时间", auto_now=True)
 
     objects = SoftDeleteManager()
 
@@ -311,7 +289,7 @@ class ProjectStage(models.Model):
         super().delete(*args, **kwargs)
 
 
-class ProjectProgress(models.Model):
+class ProjectProgress(BaseModel):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
@@ -351,7 +329,7 @@ class ProjectProgress(models.Model):
         choices=CommonStatus.choices,
         default=CommonStatus.ACTIVE,
     )
-    created_at = models.DateTimeField("创建时间", auto_now_add=True)
+
 
     objects = SoftDeleteManager()
 
@@ -377,7 +355,7 @@ class ProjectProgress(models.Model):
     @property
     def current_stage_name(self):
         last = None
-        for stage in self.stages.all().order_by("-created_at"):
+        for stage in self.stages.all().order_by("-created_"):
             if stage.image_0 or stage.image_1 or stage.image_2 or stage.description:
                 last = stage
                 break
