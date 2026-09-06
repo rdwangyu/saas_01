@@ -37,7 +37,6 @@ from .forms_dashboard import (
 from .oss_storage import OSSNotConfigured, sign_upload_url
 from .models import (
     Case,
-    CommonStatus,
     Company,
     Customer,
     ProjectProgress,
@@ -66,11 +65,9 @@ class CompanyScopedViewMixin:
         return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().filter(deleted_at=None)
         if hasattr(self.model, "company"):
             qs = qs.filter(company_id=self._current_staff().company_id)
-            if hasattr(self.model, "status"):
-                qs = qs.filter(status=CommonStatus.ACTIVE)
         return qs
 
     def get_object(self, queryset=None):
@@ -124,8 +121,8 @@ class DashboardLoginView(View):
         if form.is_valid():
             staff = form.cleaned_data["staff"]
             request.session["staff_id"] = staff.pk
-            staff.last_login = timezone.now()
-            staff.save(update_fields=["last_login"])
+            staff.last_login_at = timezone.now()
+            staff.save(update_fields=["last_login_at"])
             return HttpResponseRedirect(reverse_lazy("dashboard:index"))
         return render(request, self.template_name, {"form": form})
 
@@ -154,15 +151,13 @@ class DashboardIndexView(CompanyScopedViewMixin, TemplateView):
             return ctx
         cid = company.id
         ctx["company"] = company
-        ctx["case_count"] = Case.objects.filter(company_id=cid, status=CommonStatus.ACTIVE).count()
-        ctx["project_count"] = ProjectProgress.objects.filter(
-            company_id=cid, status=CommonStatus.ACTIVE
-        ).count()
+        ctx["case_count"] = Case.objects.filter(company_id=cid).count()
+        ctx["project_count"] = ProjectProgress.objects.filter(company_id=cid).count()
         # 客户归属本公司
         ctx["customer_count"] = Customer.objects.filter(company_id=cid).count()
         ctx["staff_count"] = Staff.objects.filter(company_id=cid).count()
         ctx["recent_projects"] = (
-            ProjectProgress.objects.filter(company_id=cid, status=CommonStatus.ACTIVE)
+            ProjectProgress.objects.filter(company_id=cid)
             .select_related("customer", "staff")
             .order_by("-created_at")[:5]
         )
@@ -284,7 +279,7 @@ class ProjectDeleteView(CompanyScopedViewMixin, DeleteView):
     success_url = reverse_lazy("dashboard:project_list")
 
     def form_valid(self, form):
-        self.object.hard_delete()
+        self.object.delete()
         messages.success(self.request, "项目已删除")
         return HttpResponseRedirect(self.get_success_url())
 
@@ -425,7 +420,7 @@ class StaffListView(CompanyScopedViewMixin, ListView):
         q = self.request.GET.get("q", "").strip()
         if q:
             qs = qs.filter(Q(name__icontains=q) | Q(phone__icontains=q) | Q(email__icontains=q))
-        return qs.select_related("company").order_by("-is_active", "name")
+        return qs.select_related("company").order_by("name")
 
 
 class StaffPasswordChangeView(CompanyScopedViewMixin, View):
@@ -455,10 +450,6 @@ class PublicCompanyList(generics.ListAPIView):
     serializer_class = CompanySerializer
     pagination_class = None
 
-    def get_queryset(self):
-        return Company.objects.filter(status=CommonStatus.ACTIVE)
-
-
 class PublicCompanyDetail(generics.RetrieveAPIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -473,7 +464,7 @@ class PublicCaseList(generics.ListAPIView):
     serializer_class = CaseSerializer
 
     def get_queryset(self):
-        qs = Case.objects.select_related("company").filter(status=CommonStatus.ACTIVE)
+        qs = Case.objects.select_related("company")
         company_id = self.request.query_params.get("company")
         if company_id:
             qs = qs.filter(company_id=company_id)
@@ -484,7 +475,7 @@ class PublicCaseDetail(generics.RetrieveAPIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = CaseSerializer
-    queryset = Case.objects.filter(status=CommonStatus.ACTIVE)
+    queryset = Case.objects
 
 
 class BindProjectView(APIView):
@@ -505,7 +496,7 @@ class BindProjectView(APIView):
             return Response({"detail": "公司参数无效"}, status=status.HTTP_400_BAD_REQUEST)
         try:
             project = ProjectProgress.objects.select_related("company", "customer", "staff").get(
-                project_no=project_no, status=CommonStatus.ACTIVE, company_id=company_id
+                project_no=project_no, company_id=company_id
             )
         except ProjectProgress.DoesNotExist:
             return Response(
@@ -568,7 +559,7 @@ class QrCodeView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def _companies(self):
-        return Company.objects.filter(status=CommonStatus.ACTIVE).order_by("name")
+        return Company.objects.order_by("name")
 
     def get(self, request):
         return render(request, self.template_name, {"companies": self._companies()})

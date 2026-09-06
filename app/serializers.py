@@ -15,7 +15,7 @@ class CompanySerializer(serializers.ModelSerializer):
             "phone",
             "address",
             "status",
-            "established_date",
+            "established_at",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]

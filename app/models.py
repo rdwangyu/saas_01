@@ -1,6 +1,6 @@
 from urllib.parse import unquote, urlparse
 
-import django.utils import timezone
+from django.utils import timezone
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.files.storage import default_storage
 from django.db import models
@@ -9,13 +9,10 @@ from django.utils.text import slugify
 MAX_SLUG_LEN = 16
 
 
-class BaseModel(models.Model):
+class SoftDeleteModel(models.Model):
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
-    deleted_at = models.DateTimeField(
-        null=True,
-        blank=True,
-    )
+    deleted_at = models.DateTimeField("删除时间", null=True, blank=True)
 
     class Meta:
         abstract = True
@@ -55,7 +52,7 @@ def _delete_oss_url(url):
         default_storage.delete(path)
 
 
-class Company(BaseModel):
+class Company(SoftDeleteModel):
     name = models.CharField("公司名称", max_length=200)
     credit_code = models.CharField(
         "社会统一信用代码", max_length=18, help_text="仅系统管理员可编辑"
@@ -101,7 +98,7 @@ class Company(BaseModel):
         return 8
 
 
-class Customer(BaseModel):
+class Customer(SoftDeleteModel):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
@@ -115,6 +112,8 @@ class Customer(BaseModel):
     address = models.CharField("住址", max_length=300, default="")
     contract = models.CharField("合同编号", max_length=100, blank=True, default="")
 
+    objects = SoftDeleteManager()
+
     class Meta:
         verbose_name = "客户"
         verbose_name_plural = "客户"
@@ -124,10 +123,7 @@ class Customer(BaseModel):
         return f"{self.name}（{self.phone}）"
 
 
-class Staff(BaseModel):
-    class Role(models.TextChoices):
-        ADMIN = "项目负责人", "公司管理员"
-
+class Staff(SoftDeleteModel):
     name = models.CharField("姓名", max_length=150)
     phone = models.CharField(
         "联系电话", max_length=30, unique=True, help_text="登录账号（手机号）"
@@ -142,13 +138,9 @@ class Staff(BaseModel):
         related_name="staff",
         verbose_name="所属公司",
     )
-    role = models.CharField(
-        "角色",
-        max_length=20,
-        choices=Role.choices,
-        default=Role.ADMIN,
-    )
     last_login_at = models.DateTimeField("上次登录时间", null=True, blank=True)
+
+    objects = SoftDeleteManager()
 
     class Meta:
         db_table = "app_staff"
@@ -167,7 +159,7 @@ class Staff(BaseModel):
         return check_password(raw_password, self.password)
 
 
-class Case(BaseModel):
+class Case(SoftDeleteModel):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
@@ -224,10 +216,10 @@ class Case(BaseModel):
             val = getattr(self, f, None)
             if val:
                 _delete_oss_url(val)
-        super().delete(*args, **kwargs)
+        super().hard_delete(*args, **kwargs)
 
 
-class ProjectStage(BaseModel):
+class ProjectStage(SoftDeleteModel):
     project = models.ForeignKey(
         "ProjectProgress",
         on_delete=models.PROTECT,
@@ -281,15 +273,15 @@ class ProjectStage(BaseModel):
                 pass
         super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
+    def hard_delete(self, *args, **kwargs):
         for f in ["image_0", "image_1", "image_2"]:
             val = getattr(self, f, None)
             if val:
                 _delete_oss_url(val)
-        super().delete(*args, **kwargs)
+        super().hard_delete(*args, **kwargs)
 
 
-class ProjectProgress(BaseModel):
+class ProjectProgress(SoftDeleteModel):
     company = models.ForeignKey(
         Company,
         on_delete=models.PROTECT,
@@ -323,13 +315,6 @@ class ProjectProgress(BaseModel):
     )
     project_name = models.CharField("项目名称", max_length=200)
     address = models.CharField("项目地址", max_length=300)
-    status = models.CharField(
-        "状态",
-        max_length=20,
-        choices=CommonStatus.choices,
-        default=CommonStatus.ACTIVE,
-    )
-
 
     objects = SoftDeleteManager()
 
@@ -343,11 +328,12 @@ class ProjectProgress(BaseModel):
         name = self.project_name or customer_name
         return f"[{self.company.name}] {name}"
 
-    def delete(self, *args, **kwargs):
-        self.status = CommonStatus.INACTIVE
-        self.save(update_fields=["status"])
-
     def hard_delete(self, *args, **kwargs):
+        for stage in self.stages.all():
+            stage.hard_delete()
+        super().hard_delete(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
         for stage in self.stages.all():
             stage.delete()
         super().delete(*args, **kwargs)
@@ -355,7 +341,7 @@ class ProjectProgress(BaseModel):
     @property
     def current_stage_name(self):
         last = None
-        for stage in self.stages.all().order_by("-created_"):
+        for stage in self.stages.all().order_by("-created_at"):
             if stage.image_0 or stage.image_1 or stage.image_2 or stage.description:
                 last = stage
                 break

@@ -32,7 +32,7 @@ Page({
           ...item,
           logo: absUrl(item.logo),
           logoText: initial(item.name),
-          establishedText: item.established_date ? formatDate(item.established_date) : '',
+          establishedText: item.established_at ? formatDate(item.established_at) : '',
           active: item.status === 'active',
         },
         loading: false,

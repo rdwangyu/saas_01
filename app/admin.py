@@ -24,20 +24,15 @@ class CompanyAdmin(admin.ModelAdmin):
         "id",
         "logo_preview",
         "name",
-        "credit_code",
         "phone",
-        "status",
-        "max_video_size_display",
         "user_count",
         "case_count",
         "project_count",
-        "created_at",
+        "deleted_at",
     ]
     list_display_links = ["id", "name"]
-    list_filter = ["status", "created_at"]
     search_fields = ["name", "credit_code", "phone", "address"]
-    readonly_fields = ["created_at"]
-    date_hierarchy = "created_at"
+    readonly_fields = ["created_at", "updated_at", "deleted_at"]
 
     fieldsets = (
         (
@@ -55,7 +50,7 @@ class CompanyAdmin(admin.ModelAdmin):
         (
             "成立日期",
             {
-                "fields": ("established_date",),
+                "fields": ("established_at",),
             },
         ),
         (
@@ -68,7 +63,7 @@ class CompanyAdmin(admin.ModelAdmin):
         (
             "状态",
             {
-                "fields": ("status", "created_at"),
+                "fields": ("created_at", "updated_at", "deleted_at"),
             },
         ),
     )
@@ -106,14 +101,12 @@ class CustomerAdmin(admin.ModelAdmin):
         "name",
         "phone",
         "company",
-        "contract",
-        "project_count",
-        "created_at",
+        "project_name",
+        "deleted_at",
     ]
     list_display_links = ["id", "name"]
-    list_filter = ["company"]
     search_fields = ["name", "phone", "address", "contract", "company__name"]
-    readonly_fields = ["created_at"]
+    readonly_fields = ["created_at", "updated_at", "deleted_at"]
 
     fieldsets = (
         (
@@ -125,15 +118,16 @@ class CustomerAdmin(admin.ModelAdmin):
         (
             "时间",
             {
-                "fields": ("created_at",),
+                "fields": ("created_at", "updated_at", "deleted_at"),
             },
         ),
     )
 
-    def project_count(self, obj):
-        return obj.projects.count()
+    def project_name(self, obj):
+        current_project = obj.projects.first()
+        return current_project if current_project else "无项目"
 
-    project_count.short_description = "项目数"
+    project_name.short_description = "所属项目"
 
 
 class StaffAdminForm(forms.ModelForm):
@@ -142,7 +136,7 @@ class StaffAdminForm(forms.ModelForm):
 
     class Meta:
         model = Staff
-        fields = ["name", "phone", "email", "company", "role", "is_active"]
+        fields = ["name", "phone", "email", "company"]
 
     def clean(self):
         cleaned = super().clean()
@@ -169,19 +163,16 @@ class StaffAdminForm(forms.ModelForm):
 class StaffAdmin(admin.ModelAdmin):
     form = StaffAdminForm
     list_display = [
+        "id",
         "name",
         "phone",
-        "email",
         "company",
-        "role_display",
-        "is_active",
-        "last_login",
-        "created_at",
+        "project_name",
+        "deleted_at",
     ]
-    list_display_links = ["phone"]
-    list_filter = ["is_active", "company"]
+    list_display_links = ["id", "phone"]
     search_fields = ["name", "phone", "email", "company__name"]
-    readonly_fields = ["created_at", "last_login"]
+    readonly_fields = ["last_login_at", "created_at", "updated_at", "deleted_at"]
 
     fieldsets = (
         (
@@ -193,7 +184,7 @@ class StaffAdmin(admin.ModelAdmin):
         (
             "公司与角色",
             {
-                "fields": ("company", "role"),
+                "fields": ("company",),
             },
         ),
         (
@@ -206,15 +197,16 @@ class StaffAdmin(admin.ModelAdmin):
         (
             "状态",
             {
-                "fields": ("is_active", "created_at", "last_login"),
+                "fields": ("last_login_at", "created_at", "updated_at", "deleted_at"),
             },
         ),
     )
 
-    def role_display(self, obj):
-        return obj.get_role_display()
+    def project_name(self, obj):
+        current_project = obj.projects.first()
+        return current_project if current_project else "无项目"
 
-    role_display.short_description = "角色"
+    project_name.short_description = "负责项目"
 
 
 @admin.register(Case)
@@ -224,17 +216,11 @@ class CaseAdmin(admin.ModelAdmin):
         "cover_preview",
         "title",
         "company",
-        "style",
-        "area",
-        "budget_display",
-        "status",
-        "created_at",
+        "deleted_at",
     ]
     list_display_links = ["id", "title"]
-    list_filter = ["style", "created_at", "company"]
-    search_fields = ["title", "description", "style", "company__name"]
-    readonly_fields = ["created_at"]
-    date_hierarchy = "created_at"
+    search_fields = ["title", "description", "company__name"]
+    readonly_fields = ["created_at", "updated_at", "deleted_at"]
 
     fieldsets = (
         (
@@ -258,7 +244,7 @@ class CaseAdmin(admin.ModelAdmin):
         (
             "状态",
             {
-                "fields": ("status", "created_at"),
+                "fields": ("created_at", "updated_at", "deleted_at"),
             },
         ),
     )
@@ -271,16 +257,6 @@ class CaseAdmin(admin.ModelAdmin):
 
     cover_preview.short_description = "封面"
 
-    def budget_display(self, obj):
-        if obj.budget:
-            return obj.budget
-        return "-"
-
-    budget_display.short_description = "预算（万元）"
-
-    def delete_model(self, request, obj):
-        obj.hard_delete()
-
 
 class ProjectProgressForm(forms.ModelForm):
     class Meta:
@@ -291,7 +267,6 @@ class ProjectProgressForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             company_id = self.instance.company_id
-            # 根据当前对象的 company_id 来过滤外键字段的查询集
             self.fields['customer'].queryset = Customer.objects.filter(company_id=company_id)
             self.fields['staff'].queryset = Staff.objects.filter(company_id=company_id)
 
@@ -306,11 +281,10 @@ class ProjectProgressAdmin(admin.ModelAdmin):
         "staff",
         "stage_display",
         "company",
-        "status",
         "created_at",
+        "deleted_at",
     ]
     list_display_links = ["id", "project_name"]
-    list_filter = ["company", "created_at"]
     search_fields = [
         "project_no",
         "project_name",
@@ -320,8 +294,7 @@ class ProjectProgressAdmin(admin.ModelAdmin):
         "customer__phone",
         "staff__name",
     ]
-    readonly_fields = ["created_at"]
-    date_hierarchy = "created_at"
+    readonly_fields = ["created_at", "updated_at", "deleted_at"]
     fieldsets = (
         (
             "基本信息",
@@ -338,7 +311,7 @@ class ProjectProgressAdmin(admin.ModelAdmin):
         (
             "状态",
             {
-                "fields": ("status", "created_at"),
+                "fields": ("created_at", "updated_at", "deleted_at"),
             },
         ),
     )
@@ -356,13 +329,6 @@ class ProjectProgressAdmin(admin.ModelAdmin):
 
     stage_display.short_description = "当前进度"
 
-    def delete_model(self, request, obj):
-        obj.hard_delete()
-
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.hard_delete()
-
 
 class ProjectStageAdminForm(forms.ModelForm):
     class Meta:
@@ -371,7 +337,6 @@ class ProjectStageAdminForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # 编辑时按当前阶段所属公司过滤项目下拉框
         if self.instance and self.instance.pk:
             company_id = self.instance.project.company_id
             self.fields["project"].queryset = ProjectProgress.objects.filter(company_id=company_id)
@@ -387,14 +352,11 @@ class ProjectStageAdmin(admin.ModelAdmin):
         "image_0_preview",
         "image_1_preview",
         "image_2_preview",
-        "created_at",
+        "deleted_at",
     ]
     list_display_links = ["id", "name"]
-    list_filter = ["project__company", "created_at"]
     search_fields = ["name", "project__project_name", "project__project_no"]
-    readonly_fields = ["created_at"]
-    date_hierarchy = "created_at"
-    ordering = ("-created_at",)
+    readonly_fields = ["created_at", "updated_at", "deleted_at"]
 
     fieldsets = (
         (
@@ -412,7 +374,7 @@ class ProjectStageAdmin(admin.ModelAdmin):
         (
             "时间",
             {
-                "fields": ("created_at",),
+                "fields": ("created_at", "updated_at", "deleted_at"),
             },
         ),
     )
@@ -435,12 +397,6 @@ class ProjectStageAdmin(admin.ModelAdmin):
 
     image_2_preview.short_description = "图片3"
 
-    def delete_model(self, request, obj):
-        obj.delete()  # 模型自定义 delete：硬删并清理 OSS 图片
-
-    def delete_queryset(self, request, queryset):
-        for obj in queryset:
-            obj.delete()
 
 admin.site.site_header = "白云企业管理"
 admin.site.site_title = "白云企业管理"

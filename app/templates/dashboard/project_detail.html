@@ -15,7 +15,6 @@
     <dt>负责人</dt><dd>{{ project.staff.name|default:"—" }}</dd>
     <dt>地址</dt><dd>{{ project.address|default:"—" }}</dd>
     <dt>当前进度</dt><dd>{{ project.current_stage_name }}</dd>
-    <dt>状态</dt><dd>{{ project.get_status_display }}</dd>
     <dt>创建时间</dt><dd>{{ project.created_at|date:"Y-m-d H:i" }}</dd>
   </dl>
 </div>
