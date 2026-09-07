@@ -7,7 +7,5 @@
 15. 合同文件没加
 11. 考虑多人同时编辑会不会出错
 
-12. logo dashboard, admin will logout
-
 9. pay money issue
 10. 视频大小问题

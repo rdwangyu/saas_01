@@ -135,7 +135,7 @@ class DashboardLogoutView(View):
         return self._logout(request)
 
     def _logout(self, request):
-        request.session.flush()
+        del request.session["staff_id"]
         return HttpResponseRedirect(reverse_lazy("dashboard:login"))
 
 
