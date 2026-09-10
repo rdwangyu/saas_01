@@ -36,65 +36,18 @@
     status.textContent = msg
     status.style.color = ok ? '#10b981' : '#ef4444'
   }
-  // ---- 图片压缩（浏览器端 canvas）----
-  var IMG_MAX_EDGE = 1600  // 长边像素上限，超过才缩放
-  var IMG_QUALITY = 0.82   // JPEG 质量
-
-  // 压缩成功后返回 { blob, filename }；无法压缩/无收益时返回 null（调用方回退直传原文件）
-  function compressImage(file) {
-    if (typeof createImageBitmap === 'undefined') return Promise.resolve(null)
-    return createImageBitmap(file)
-      .then(function (bmp) {
-        var w = bmp.width, h = bmp.height
-        var scale = Math.min(1, IMG_MAX_EDGE / Math.max(w, h))
-        // 原图已经够小且是 jpeg：不再二次压缩，避免画质损耗
-        if (scale >= 1 && file.type === 'image/jpeg') {
-          if (bmp.close) bmp.close()
-          return null
-        }
-        var canvas = document.createElement('canvas')
-        canvas.width = Math.max(1, Math.round(w * scale))
-        canvas.height = Math.max(1, Math.round(h * scale))
-        canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height)
-        var outType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
-        var outName = file.name.replace(/\.[^.]+$/, '') +
-          (outType === 'image/png' ? '.png' : '.jpg')
-        return new Promise(function (resolve) {
-          canvas.toBlob(function (blob) {
-            if (bmp.close) bmp.close()
-            if (!blob || blob.size >= file.size) resolve(null) // 无收益，保留原文件
-            else resolve({ blob: blob, filename: outName })
-          }, outType, outType === 'image/jpeg' ? IMG_QUALITY : undefined)
-        })
-      })
-      .catch(function () { return null })
-  }
-
   async function upload(file) {
-    showStatus('处理中…')
-    var payload = {
-      dir: box.dataset.dir,
-      filename: file.name,
-      kind: isVideo ? 'video' : 'image',
-    }
-    var toUpload = file
-    try {
-      if (!isVideo) {
-        var r = await compressImage(file)
-        if (r) { toUpload = r.blob; payload.filename = r.filename }
-      }
-    } catch (e) { /* 压缩失败则按原文件直传 */ }
-    payload.size = toUpload.size || 0
+    showStatus('上传中…')
     try {
       var resp = await fetch(box.dataset.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf() },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ dir: box.dataset.dir, filename: file.name, size: file.size, kind: isVideo ? 'video' : 'image' }),
       })
       var data = await resp.json()
       if (!resp.ok) { showStatus(data.detail || '获取上传地址失败'); return }
       // 用空类型 Blob 包裹，使 fetch 不带 Content-Type 头（否则与签名不符会 403）
-      var up = await fetch(data.upload_url, { method: 'PUT', body: new Blob([toUpload]) })
+      var up = await fetch(data.upload_url, { method: 'PUT', body: new Blob([file]) })
       if (!up.ok) { showStatus('上传到 OSS 失败（' + up.status + '）'); return }
       hidden.value = data.file_url
       preview.innerHTML = isVideo

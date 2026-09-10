@@ -6,9 +6,6 @@ from django.core.files.storage import default_storage
 from django.db import models
 from django.utils.text import slugify
 
-MAX_SLUG_LEN = 16
-
-
 class SoftDeleteModel(models.Model):
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
@@ -63,12 +60,6 @@ class Company(SoftDeleteModel):
     description = models.TextField("公司简介", blank=True, default="")
     phone = models.CharField("联系电话", max_length=30, default="")
     address = models.CharField("公司地址", max_length=300, default="")
-    max_video_size = models.IntegerField(
-        "视频大小限制（MB）",
-        choices=[(200, "200MB"), (500, "500MB")],
-        default=200,
-        help_text="影响案例和项目进度的视频上传上限",
-    )
     established_at = models.DateField(
         "成立日期", null=True, blank=True, help_text="公司成立日期"
     )

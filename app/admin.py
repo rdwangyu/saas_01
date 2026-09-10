@@ -54,13 +54,6 @@ class CompanyAdmin(admin.ModelAdmin):
             },
         ),
         (
-            "视频限制",
-            {
-                "fields": ("max_video_size",),
-                "description": "视频上传大小限制，影响案例和项目进度。",
-            },
-        ),
-        (
             "状态",
             {
                 "fields": ("created_at", "updated_at", "deleted_at"),
@@ -72,11 +65,6 @@ class CompanyAdmin(admin.ModelAdmin):
         return image_preview(obj, "logo", width=60)
 
     logo_preview.short_description = "Logo"
-
-    def max_video_size_display(self, obj):
-        return f"{obj.max_video_size}MB"
-
-    max_video_size_display.short_description = "视频大小限制"
 
     def user_count(self, obj):
         return obj.staff.count()

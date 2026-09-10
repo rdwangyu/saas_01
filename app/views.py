@@ -511,15 +511,9 @@ class BindProjectView(APIView):
 # ============================================================
 
 OSS_ALLOWED_DIRS = {"company_case", "company_logo", "company_project_progress"}
-
-# 单张图片上传大小上限（MB）
-IMAGE_MAX_MB = 15
-# 视频上传兜底上限（MB）：超管/无所属公司时使用，员工上传取所属公司 max_video_size
 DEFAULT_MAX_VIDEO_MB = 200
-
-# kind 缺失时按扩展名推断视频/图片
-_VIDEO_EXTS = {"mp4", "mov", "m4v", "avi", "mkv", "wmv", "flv", "webm", "3gp"}
-
+VIDEO_EXTS_SUPPORTED = {"mp4", "mov", "m4v", "avi", "mkv", "wmv", "flv", "webm", "3gp"}
+IMAGE_EXTS_SUPPORTED = {"jpeg", "jpg", "png"}
 
 class OssUploadUrlView(View):
     def post(self, request):
@@ -529,45 +523,30 @@ class OssUploadUrlView(View):
             data = request.POST
         dir_name = (data.get("dir") or "").strip()
         filename = (data.get("filename") or "").strip()
+        kind = (data.get("kind") or "").strip()
+        size = data.get("size") or 0
         if dir_name not in OSS_ALLOWED_DIRS:
             return JsonResponse({"detail": "非法目录"}, status=400)
         if not filename:
             return JsonResponse({"detail": "缺少文件名"}, status=400)
-
+        if kind not in ["image", "video"]:
+            return JsonResponse({"detail": "缺少类型"}, status=400)
+        if size < 1024:
+            return JsonResponse({"detail": "缺少SIZE"}, status=400)
+        
         staff = get_current_staff(request)
         company_id = staff.company_id if staff else None
-
+        if not company_id:
+            return JsonResponse({"detail": "非法请求"}, status=400)
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
-        kind = (data.get("kind") or "").strip().lower()
-        if kind not in ("image", "video"):
-            kind = "video" if ext in _VIDEO_EXTS else "image"
+        if ext not in VIDEO_EXTS_SUPPORTED and ext not in IMAGE_EXTS_SUPPORTED:
+            return JsonResponse({"detail": "类型不支持"}, status=400)
 
-        # 大小上限：视频按公司 max_video_size，图片按固定 IMAGE_MAX_MB
-        if kind == "video":
-            limit_mb = DEFAULT_MAX_VIDEO_MB
-            if company_id:
-                limit_mb = (
-                    Company.objects.filter(id=company_id)
-                    .values_list("max_video_size", flat=True)
-                    .first()
-                    or DEFAULT_MAX_VIDEO_MB
-                )
-        else:
-            limit_mb = IMAGE_MAX_MB
-
-        # 按申报大小拦截：超限不发签名地址（正常 UI 已被挡住）
-        raw_size = data.get("size")
-        if raw_size not in (None, ""):
-            try:
-                declared_size = int(raw_size)
-            except (TypeError, ValueError):
-                declared_size = None
-            if declared_size is not None and declared_size > limit_mb * 1024 * 1024:
-                label = "视频" if kind == "video" else "图片"
-                return JsonResponse(
-                    {"detail": f"{label}大小超过限制（最多 {limit_mb}MB）"}, status=400
-                )
-
+        if size > DEFAULT_MAX_VIDEO_MB * 1024 * 1024:
+            label = "视频" if kind == "video" else "图片"
+            return JsonResponse(
+                {"detail": f"{label}大小超过限制（最多{DEFAULT_MAX_VIDEO_MB}MB）"}, status=400
+            )
         key = f"{dir_name}/{company_id or 'admin'}_{uuid4().hex[:8]}.{ext}"
         try:
             upload_url, file_url = sign_upload_url(key)

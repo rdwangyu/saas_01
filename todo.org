@@ -8,5 +8,4 @@
 11. 考虑多人同时编辑会不会出错
 
 9. pay money issue
-10. 视频大小问题
 11. session need to out-date after a day
