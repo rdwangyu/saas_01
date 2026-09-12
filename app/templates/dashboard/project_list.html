@@ -7,7 +7,14 @@
     <button type="submit" class="btn secondary sm">搜索</button>
     {% if request.GET.q %}<a href="{% url 'dashboard:project_list' %}" class="btn secondary sm">清除</a>{% endif %}
   </form>
-  <a href="{% url 'dashboard:project_create' %}" class="btn">＋ 新增项目</a>
+  <div class="toolbar-actions">
+    <span class="quota-hint{% if quota.full %} full{% endif %}">项目 {{ quota.used }}/{{ quota.limit }}</span>
+    {% if quota.full %}
+    <span class="btn disabled" title="每个公司最多 {{ quota.limit }} 个项目，请先删除部分项目">＋ 新增项目</span>
+    {% else %}
+    <a href="{% url 'dashboard:project_create' %}" class="btn">＋ 新增项目</a>
+    {% endif %}
+  </div>
 </div>
 {% if projects %}
 <div class="table-card">

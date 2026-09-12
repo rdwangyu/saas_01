@@ -5,7 +5,11 @@
   <div class="detail-head">
     <h3>{{ project.project_name }}{% if project.project_no %} <span class="video-badge">{{ project.project_no }}</span>{% endif %}</h3>
     <div class="detail-actions">
+      {% if quota.full %}
+      <span class="btn sm disabled" title="每个项目最多 {{ quota.limit }} 个阶段，请先删除部分阶段">＋ 添加阶段</span>
+      {% else %}
       <a class="btn sm" href="{% url 'dashboard:stage_create' project.pk %}?next={{ request.path }}">＋ 添加阶段</a>
+      {% endif %}
       <a class="btn secondary sm" href="{% url 'dashboard:project_update' project.pk %}?next={{ request.path }}">编辑</a>
       <a class="btn danger sm" href="{% url 'dashboard:project_delete' project.pk %}">删除</a>
     </div>
@@ -20,7 +24,7 @@
 </div>
 
 <div class="card">
-  <h3>项目阶段</h3>
+  <h3>项目阶段 <span class="quota-hint{% if quota.full %} full{% endif %}">{{ quota.used }}/{{ quota.limit }}</span></h3>
   {% for s in project.stages.all %}
   <div class="stage-block">
     <div class="stage-head">

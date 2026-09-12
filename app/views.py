@@ -42,6 +42,7 @@ from .models import (
     ProjectProgress,
     ProjectStage,
     Staff,
+    active_count,
 )
 from .serializers import (
     CaseSerializer,
@@ -53,6 +54,11 @@ from .wechat import WechatError, generate_company_code
 # ============================================================
 # 后台 dashboard（/dashboard/）
 # ============================================================
+def quota_context(used, limit):
+    """列表/详情页展示配额用：{{ quota.used }}/{{ quota.limit }}。"""
+    return {"used": used, "limit": limit, "full": used >= limit}
+
+
 class CompanyScopedViewMixin:
     login_url = reverse_lazy("dashboard:login")
 
@@ -151,13 +157,13 @@ class DashboardIndexView(CompanyScopedViewMixin, TemplateView):
             return ctx
         cid = company.id
         ctx["company"] = company
-        ctx["case_count"] = Case.objects.filter(company_id=cid).count()
-        ctx["project_count"] = ProjectProgress.objects.filter(company_id=cid).count()
+        ctx["case_count"] = Case.objects.filter(company_id=cid, deleted_at=None).count()
+        ctx["project_count"] = ProjectProgress.objects.filter(company_id=cid, deleted_at=None).count()
         # 客户归属本公司
-        ctx["customer_count"] = Customer.objects.filter(company_id=cid).count()
-        ctx["staff_count"] = Staff.objects.filter(company_id=cid).count()
+        ctx["customer_count"] = Customer.objects.filter(company_id=cid, deleted_at=None).count()
+        ctx["staff_count"] = Staff.objects.filter(company_id=cid, deleted_at=None).count()
         ctx["recent_projects"] = (
-            ProjectProgress.objects.filter(company_id=cid)
+            ProjectProgress.objects.filter(company_id=cid, deleted_at=None)
             .select_related("customer", "staff")
             .order_by("-created_at")[:5]
         )
@@ -194,6 +200,15 @@ class CaseListView(CompanyScopedViewMixin, ListView):
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(style__icontains=q))
         return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        company = self._current_staff().company
+        # 配额按公司总量统计，不受搜索条件影响
+        ctx["quota"] = quota_context(
+            active_count(Case, company_id=company.id), company.max_cases
+        )
+        return ctx
 
 
 class CaseCreateView(CompanyScopedViewMixin, CreateView):
@@ -245,6 +260,14 @@ class ProjectListView(CompanyScopedViewMixin, ListView):
             qs = qs.filter(Q(project_name__icontains=q) | Q(address__icontains=q))
         return qs
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        company = self._current_staff().company
+        ctx["quota"] = quota_context(
+            active_count(ProjectProgress, company_id=company.id), company.max_projects
+        )
+        return ctx
+
 
 class ProjectCreateView(CompanyScopedViewMixin, CreateView):
     model = ProjectProgress
@@ -292,6 +315,13 @@ class ProjectDetailView(CompanyScopedViewMixin, DetailView):
     def get_queryset(self):
         return super().get_queryset().select_related("customer", "staff").prefetch_related("stages")
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["quota"] = quota_context(
+            active_count(ProjectStage, project=self.object), self.object.max_stages
+        )
+        return ctx
+
 
 class ProjectStageCreateView(CompanyScopedViewMixin, CreateView):
     model = ProjectStage
@@ -306,6 +336,11 @@ class ProjectStageCreateView(CompanyScopedViewMixin, CreateView):
             ProjectProgress, pk=kwargs["pk"], company_id=staff.company_id
         )
         return super().dispatch(request, *args, **kwargs)
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["project"] = self.project
+        return kwargs
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -545,7 +580,7 @@ class OssUploadUrlView(View):
         if size > DEFAULT_MAX_VIDEO_MB * 1024 * 1024:
             label = "视频" if kind == "video" else "图片"
             return JsonResponse(
-                {"detail": f"{label}大小超过限制（最多{DEFAULT_MAX_VIDEO_MB}MB）"}, status=400
+                {"detail": f"{label}大小超过限制（最多 {DEFAULT_MAX_VIDEO_MB} MB）"}, status=400
             )
         key = f"{dir_name}/{company_id or 'admin'}_{uuid4().hex[:8]}.{ext}"
         try:

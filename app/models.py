@@ -6,6 +6,20 @@ from django.core.files.storage import default_storage
 from django.db import models
 from django.utils.text import slugify
 
+# 租户配额：以公司为单位限制可创建的记录数，软删除的记录不占用配额。
+CASE_LIMIT_PER_COMPANY = 2
+PROJECT_LIMIT_PER_COMPANY = 2
+STAGE_LIMIT_PER_PROJECT = 2
+
+
+def active_count(model, **filters) -> int:
+    """配额口径的计数：只统计未软删除的记录。
+
+    表单校验与后台列表页的配额显示共用这一个口径。
+    """
+    return model.objects.filter(deleted_at=None, **filters).count()
+
+
 class SoftDeleteModel(models.Model):
     created_at = models.DateTimeField("创建时间", auto_now_add=True)
     updated_at = models.DateTimeField("更新时间", auto_now=True)
@@ -87,6 +101,16 @@ class Company(SoftDeleteModel):
     @property
     def max_images(self) -> int:
         return 8
+
+    @property
+    def max_cases(self) -> int:
+        """该公司最多可创建的案例数（不含已软删除的案例）。"""
+        return CASE_LIMIT_PER_COMPANY
+
+    @property
+    def max_projects(self) -> int:
+        """该公司最多可创建的项目数（不含已软删除的项目）。"""
+        return PROJECT_LIMIT_PER_COMPANY
 
 
 class Customer(SoftDeleteModel):
@@ -328,6 +352,11 @@ class ProjectProgress(SoftDeleteModel):
         for stage in self.stages.all():
             stage.delete()
         super().delete(*args, **kwargs)
+
+    @property
+    def max_stages(self) -> int:
+        """该项目最多可添加的阶段数（不含已软删除的阶段）。"""
+        return STAGE_LIMIT_PER_PROJECT
 
     @property
     def current_stage_name(self):

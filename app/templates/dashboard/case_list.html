@@ -7,7 +7,14 @@
     <button type="submit" class="btn secondary sm">搜索</button>
     {% if request.GET.q %}<a href="{% url 'dashboard:case_list' %}" class="btn secondary sm">清除</a>{% endif %}
   </form>
-  <a href="{% url 'dashboard:case_create' %}" class="btn">＋ 新增案例</a>
+  <div class="toolbar-actions">
+    <span class="quota-hint{% if quota.full %} full{% endif %}">案例 {{ quota.used }}/{{ quota.limit }}</span>
+    {% if quota.full %}
+    <span class="btn disabled" title="每个公司最多 {{ quota.limit }} 个案例，请先删除部分案例">＋ 新增案例</span>
+    {% else %}
+    <a href="{% url 'dashboard:case_create' %}" class="btn">＋ 新增案例</a>
+    {% endif %}
+  </div>
 </div>
 {% if cases %}
 <div class="table-card">

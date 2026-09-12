@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 
 from .models import (Case, Company, Customer, ProjectProgress, ProjectStage,
-                     Staff)
+                     Staff, active_count)
 from .widgets import OssUrlInput
 
 
@@ -20,9 +20,42 @@ class BaseDashboardForm(forms.ModelForm):
     def __init__(self, *args, request=None, **kwargs):
         self.request = request
         super().__init__(*args, **kwargs)
+        self._bind_company()
 
     def _current_staff(self):
         return get_current_staff(self.request)
+
+    def _bind_company(self):
+        """新建时预先带上当前员工所属公司，视图的 form_valid 也会再赋值一次。
+
+        提前绑定是为了让 clean() 能在校验阶段判断公司配额。
+        """
+        if self.instance.pk is not None or not hasattr(self.instance, "company_id"):
+            return
+        staff = self._current_staff()
+        if staff is not None and staff.company_id:
+            self.instance.company_id = staff.company_id
+
+
+class CompanyQuotaMixin:
+    """公司级配额：新建时校验上限，软删除的记录不占用配额。"""
+
+    quota_model = None     # 参与统计的模型，如 Case
+    quota_limit_attr = ""  # Company 上的上限属性名
+    quota_label = ""       # 提示文案中的记录名称
+
+    def clean(self):
+        cleaned = super().clean()
+        company_id = getattr(self.instance, "company_id", None)
+        if self.instance.pk is None and company_id:
+            limit = getattr(self.instance.company, self.quota_limit_attr)
+            used = active_count(self.quota_model, company_id=company_id)
+            if used >= limit:
+                raise ValidationError(
+                    f"每个公司最多创建 {limit} 个{self.quota_label}，已达上限。"
+                    f"请先删除部分{self.quota_label}，或联系管理员。"
+                )
+        return cleaned
 
 
 class DashboardLoginForm(forms.Form):
@@ -62,7 +95,11 @@ class CompanyForm(BaseDashboardForm):
         self.fields["credit_code"].disabled = True
 
 
-class CaseForm(BaseDashboardForm):
+class CaseForm(CompanyQuotaMixin, BaseDashboardForm):
+    quota_model = Case
+    quota_limit_attr = "max_cases"
+    quota_label = "案例"
+
     class Meta:
         model = Case
         fields = ["title", "cover", "video", "description", "style", "area", "budget"]
@@ -71,7 +108,11 @@ class CaseForm(BaseDashboardForm):
             "video": OssUrlInput(accept="video/*", dir="company_case"),
         }
 
-class ProjectForm(BaseDashboardForm):
+class ProjectForm(CompanyQuotaMixin, BaseDashboardForm):
+    quota_model = ProjectProgress
+    quota_limit_attr = "max_projects"
+    quota_label = "项目"
+
     class Meta:
         model = ProjectProgress
         fields = ["project_no", "project_name", "address", "customer", "staff"]
@@ -98,6 +139,23 @@ class CustomerForm(BaseDashboardForm):
 
 
 class ProjectStageForm(forms.ModelForm):
+    def __init__(self, *args, project=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        # 新建时由视图传入所属项目；编辑时从实例上取
+        self.project = project if project is not None else getattr(self.instance, "project", None)
+        
+    def clean(self):
+        cleaned = super().clean()
+        project = self.project
+        if self.instance.pk is None and project is not None:
+            limit = project.max_stages
+            used = active_count(ProjectStage, project=project)
+            if used >= limit:
+                raise ValidationError(
+                    f"每个项目最多 {limit} 个阶段，已达上限。请先删除部分阶段。"
+                )
+        return cleaned
+
     class Meta:
         model = ProjectStage
         fields = ["name", "image_0", "image_1", "image_2", "description"]

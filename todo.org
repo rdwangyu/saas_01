@@ -7,5 +7,4 @@
 15. 合同文件没加
 11. 考虑多人同时编辑会不会出错
 
-9. pay money issue
 11. session need to out-date after a day
