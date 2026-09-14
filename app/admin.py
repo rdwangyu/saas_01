@@ -264,6 +264,7 @@ class ProjectProgressAdmin(admin.ModelAdmin):
     form = ProjectProgressForm
     list_display = [
         "id",
+        "project_no",
         "project_name",
         "customer",
         "staff",
