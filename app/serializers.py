@@ -14,11 +14,11 @@ class CompanySerializer(serializers.ModelSerializer):
             "description",
             "phone",
             "address",
-            "status",
             "established_at",
             "created_at",
+            "deleted_at",
         ]
-        read_only_fields = ["id", "created_at"]
+        read_only_fields = ["id", "created_at", "deleted_at"]
 
 
 class CustomerSerializer(serializers.ModelSerializer):

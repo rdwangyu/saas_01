@@ -7,9 +7,9 @@ from django.db import models
 from django.utils.text import slugify
 
 # 租户配额：以公司为单位限制可创建的记录数，软删除的记录不占用配额。
-CASE_LIMIT_PER_COMPANY = 2
-PROJECT_LIMIT_PER_COMPANY = 2
-STAGE_LIMIT_PER_PROJECT = 2
+CASE_LIMIT_PER_COMPANY = 30
+PROJECT_LIMIT_PER_COMPANY = 50
+STAGE_LIMIT_PER_PROJECT = 12
 
 
 def active_count(model, **filters) -> int:
