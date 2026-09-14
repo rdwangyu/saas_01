@@ -33,7 +33,7 @@ Page({
           logo: absUrl(item.logo),
           logoText: initial(item.name),
           establishedText: item.established_at ? formatDate(item.established_at) : '',
-          active: item.deleted_at !== null,
+          active: item.deleted_at === null,
         },
         loading: false,
       })

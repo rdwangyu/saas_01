@@ -48,4 +48,21 @@ Page({
     const current = e.currentTarget.dataset.current
     wx.previewImage({ urls: this.data.images, current })
   },
+
+  onShareAppMessage() {
+    const id = this.data.detail.id
+    const name = this.data.detail.title
+    return {
+      title: name,
+      path: `/pages/case-detail/case-detail?id=${id}`,
+    }
+  },
+
+  onShareTimeline() {
+    const id = this.data.detail.id	
+    return {
+      title: this.data.detail.title,
+      query: `id=${id}`,
+    }
+  },
 })
